@@ -3,166 +3,153 @@
 //
 
 #include "graph.h"
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <cstdlib>
 
 /************************* Vertex  **************************/
 
-template <class T>
-Vertex<T>::Vertex(T in): info(in) {}
-/*
- * Auxiliary function to add an outgoing edge to a vertex (this),
- * with a given destination vertex (d) and edge weight (w).
- */
-template <class T>
-Edge<T> * Vertex<T>::addEdge(Vertex<T> *d, double w) {
-    auto newEdge = new Edge<T>(this, d, w);
+// Updated constructor: takes the individual fields directly.
+Vertex::Vertex(const std::string &name, const int &id, const std::string &code, const bool &park)
+    : name(name), id(id), code(code), park(park) { }
+
+Edge* Vertex::addEdge(Vertex *d, double walk, double drive) {
+    auto newEdge = new Edge(this, d, walk, drive);
     adj.push_back(newEdge);
     d->incoming.push_back(newEdge);
     return newEdge;
 }
 
-/*
- * Auxiliary function to remove an outgoing edge (with a given destination (d))
- * from a vertex (this).
- * Returns true if successful, and false if such edge does not exist.
- */
-template <class T>
-bool Vertex<T>::removeEdge(T in) {
+// Now removeEdge accepts the destination vertex's name.
+bool Vertex::removeEdge(const std::string &destName) {
     bool removedEdge = false;
     auto it = adj.begin();
     while (it != adj.end()) {
-        Edge<T> *edge = *it;
-        Vertex<T> *dest = edge->getDest();
-        if (dest->getInfo() == in) {
+        Edge *edge = *it;
+        Vertex *dest = edge->getDest();
+        if (dest->getName() == destName) {
             it = adj.erase(it);
             deleteEdge(edge);
-            removedEdge = true; // allows for multiple edges to connect the same pair of vertices (multigraph)
+            removedEdge = true; // allows for multiple edges between the same pair of vertices
         }
         else {
-            it++;
+            ++it;
         }
     }
     return removedEdge;
 }
 
-/*
- * Auxiliary function to remove an outgoing edge of a vertex.
- */
-template <class T>
-void Vertex<T>::removeOutgoingEdges() {
+void Vertex::removeOutgoingEdges() {
     auto it = adj.begin();
     while (it != adj.end()) {
-        Edge<T> *edge = *it;
+        Edge *edge = *it;
         it = adj.erase(it);
         deleteEdge(edge);
     }
 }
 
-template <class T>
-bool Vertex<T>::operator<(Vertex<T> & vertex) const {
+bool Vertex::operator<(const Vertex &vertex) const {
     return this->dist < vertex.dist;
 }
 
-template <class T>
-T Vertex<T>::getInfo() const {
-    return this->info;
+std::string Vertex::getName() const {
+    return this->name;
 }
 
-template <class T>
-int Vertex<T>::getLow() const {
+int Vertex::getId() const {
+    return this->id;
+}
+
+std::string Vertex::getCode() const {
+    return this->code;
+}
+
+bool Vertex::isPark() const {
+    return this->park;
+}
+
+int Vertex::getLow() const {
     return this->low;
 }
 
-template <class T>
-void Vertex<T>::setLow(int value) {
+void Vertex::setLow(int value) {
     this->low = value;
 }
 
-template <class T>
-int Vertex<T>::getNum() const {
+int Vertex::getNum() const {
     return this->num;
 }
 
-template <class T>
-void Vertex<T>::setNum(int value) {
+void Vertex::setNum(int value) {
     this->num = value;
 }
 
-template <class T>
-std::vector<Edge<T>*> Vertex<T>::getAdj() const {
+std::vector<Edge*> Vertex::getAdj() const {
     return this->adj;
 }
 
-template <class T>
-bool Vertex<T>::isVisited() const {
+bool Vertex::isVisited() const {
     return this->visited;
 }
 
-template <class T>
-bool Vertex<T>::isProcessing() const {
+bool Vertex::isProcessing() const {
     return this->processing;
 }
 
-template <class T>
-unsigned int Vertex<T>::getIndegree() const {
+unsigned int Vertex::getIndegree() const {
     return this->indegree;
 }
 
-template <class T>
-double Vertex<T>::getDist() const {
+double Vertex::getDist() const {
     return this->dist;
 }
 
-template <class T>
-Edge<T> *Vertex<T>::getPath() const {
+Edge *Vertex::getPath() const {
     return this->path;
 }
 
-template <class T>
-std::vector<Edge<T> *> Vertex<T>::getIncoming() const {
+std::vector<Edge *> Vertex::getIncoming() const {
     return this->incoming;
 }
 
-template <class T>
-void Vertex<T>::setInfo(T in) {
-    this->info = in;
-}
+void Vertex::setName(const std::string& newName) {this->name = newName;}
+void Vertex::setId(const int& newId) {this->id = newId;}
+void Vertex::setCode(const std::string& newCode) {this->code = newCode;}
+void Vertex::setPark(const bool newPark) {this->park = newPark;}
 
-template <class T>
-void Vertex<T>::setVisited(bool visited) {
+// Since the location information is now stored in individual fields,
+// we no longer need a setLoc function.
+void Vertex::setVisited(bool visited) {
     this->visited = visited;
 }
 
-template <class T>
-void Vertex<T>::setProcessing(bool processing) {
+void Vertex::setProcessing(bool processing) {
     this->processing = processing;
 }
 
-template <class T>
-void Vertex<T>::setIndegree(unsigned int indegree) {
+void Vertex::setIndegree(unsigned int indegree) {
     this->indegree = indegree;
 }
 
-template <class T>
-void Vertex<T>::setDist(double dist) {
+void Vertex::setDist(double dist) {
     this->dist = dist;
 }
 
-template <class T>
-void Vertex<T>::setPath(Edge<T> *path) {
+void Vertex::setPath(Edge *path) {
     this->path = path;
 }
 
-template <class T>
-void Vertex<T>::deleteEdge(Edge<T> *edge) {
-    Vertex<T> *dest = edge->getDest();
-    // Remove the corresponding edge from the incoming list
+void Vertex::deleteEdge(const Edge *edge) const {
+    Vertex *dest = edge->getDest();
+    // Remove the corresponding edge from the destination's incoming list.
     auto it = dest->incoming.begin();
     while (it != dest->incoming.end()) {
-        if ((*it)->getOrig()->getInfo() == info) {
+        if ((*it)->getOrig()->getName() == this->name) {
             it = dest->incoming.erase(it);
         }
         else {
-            it++;
+            ++it;
         }
     }
     delete edge;
@@ -170,112 +157,82 @@ void Vertex<T>::deleteEdge(Edge<T> *edge) {
 
 /********************** Edge  ****************************/
 
-template <class T>
-Edge<T>::Edge(Vertex<T> *orig, Vertex<T> *dest, double w): orig(orig), dest(dest), weight(w) {}
+Edge::Edge(Vertex *orig, Vertex *dest, double w, double drive)
+    : orig(orig), dest(dest), walk(w), drive(drive) { }
 
-template <class T>
-Vertex<T> * Edge<T>::getDest() const {
+Vertex *Edge::getDest() const {
     return this->dest;
 }
 
-template <class T>
-double Edge<T>::getWeight() const {
-    return this->weight;
-}
-
-template <class T>
-Vertex<T> * Edge<T>::getOrig() const {
+Vertex *Edge::getOrig() const {
     return this->orig;
 }
 
-template <class T>
-Edge<T> *Edge<T>::getReverse() const {
+Edge *Edge::getReverse() const {
     return this->reverse;
 }
 
-template <class T>
-bool Edge<T>::isSelected() const {
+bool Edge::isSelected() const {
     return this->selected;
 }
 
-template <class T>
-double Edge<T>::getFlow() const {
-    return flow;
-}
-
-template <class T>
-void Edge<T>::setSelected(bool selected) {
+void Edge::setSelected(bool selected) {
     this->selected = selected;
 }
 
-template <class T>
-void Edge<T>::setReverse(Edge<T> *reverse) {
+void Edge::setReverse(Edge *reverse) {
     this->reverse = reverse;
 }
 
-template <class T>
-void Edge<T>::setFlow(double flow) {
-    this->flow = flow;
-}
+void Edge::setWalk(const double walk) { this->walk = walk; }
+double Edge::getWalk() const { return this->walk; }
+void Edge::setDrive(const double drive) { this->drive = drive; }
+double Edge::getDrive() const { return drive; }
+
 
 /********************** Graph  ****************************/
 
-template <class T>
-int Graph<T>::getNumVertex() const {
+int Graph::getNumVertex() const {
     return vertexSet.size();
 }
 
-template <class T>
-std::vector<Vertex<T> *> Graph<T>::getVertexSet() const {
+std::vector<Vertex *> Graph::getVertexSet() const {
     return vertexSet;
 }
 
-/*
- * Auxiliary function to find a vertex with a given content.
- */
-template <class T>
-Vertex<T> * Graph<T>::findVertex(const T &in) const {
+// Finds a vertex by its name (assumed to be unique).
+Vertex *Graph::findVertex(const std::string &name) const {
     for (auto v : vertexSet)
-        if (v->getInfo() == in)
+        if (v->getName() == name)
             return v;
     return nullptr;
 }
 
-/*
- * Finds the index of the vertex with a given content.
- */
-template <class T>
-int Graph<T>::findVertexIdx(const T &in) const {
+int Graph::findVertexIdx(const std::string &name) const {
     for (unsigned i = 0; i < vertexSet.size(); i++)
-        if (vertexSet[i]->getInfo() == in)
+        if (vertexSet[i]->getName() == name)
             return i;
     return -1;
 }
-/*
- *  Adds a vertex with a given content or info (in) to a graph (this).
- *  Returns true if successful, and false if a vertex with that content already exists.
- */
-template <class T>
-bool Graph<T>::addVertex(const T &in) {
-    if (findVertex(in) != nullptr)
+
+// Adds a vertex with the given properties.
+// Returns false if a vertex with the same name already exists.
+bool Graph::addVertex(const std::string &name, const int &id, const std::string &code, const bool &park) {
+    if (findVertex(name) != nullptr)
         return false;
-    vertexSet.push_back(new Vertex<T>(in));
+    vertexSet.push_back(new Vertex(name, id, code, park));
     return true;
 }
 
-/*
- *  Removes a vertex with a given content (in) from a graph (this), and
- *  all outgoing and incoming edges.
- *  Returns true if successful, and false if such vertex does not exist.
- */
-template <class T>
-bool Graph<T>::removeVertex(const T &in) {
-    for (auto it = vertexSet.begin(); it != vertexSet.end(); it++) {
-        if ((*it)->getInfo() == in) {
-            auto v = *it;
+// Removes a vertex identified by its name and all its edges.
+bool Graph::removeVertex(const std::string &name) {
+    for (auto it = vertexSet.begin(); it != vertexSet.end(); ++it) {
+        if ((*it)->getName() == name) {
+            Vertex *v = *it;
             v->removeOutgoingEdges();
+            // Remove edges in other vertices that point to v.
             for (auto u : vertexSet) {
-                u->removeEdge(v->getInfo());
+                u->removeEdge(v->getName());
             }
             vertexSet.erase(it);
             delete v;
@@ -285,47 +242,37 @@ bool Graph<T>::removeVertex(const T &in) {
     return false;
 }
 
-/*
- * Adds an edge to a graph (this), given the contents of the source and
- * destination vertices and the edge weight (w).
- * Returns true if successful, and false if the source or destination vertex does not exist.
- */
-template <class T>
-bool Graph<T>::addEdge(const T &sourc, const T &dest, double w) {
-    auto v1 = findVertex(sourc);
-    auto v2 = findVertex(dest);
+// Adds an edge between vertices identified by their names.
+// The parameters are: source name, destination name, walk weight, drive weight.
+bool Graph::addEdge(const std::string &sourceName, const std::string &destName, double walk, double drive) const {
+    auto v1 = findVertex(sourceName);
+    auto v2 = findVertex(destName);
     if (v1 == nullptr || v2 == nullptr)
         return false;
-    v1->addEdge(v2, w);
+    v1->addEdge(v2, walk, drive);
     return true;
 }
 
-/*
- * Removes an edge from a graph (this).
- * The edge is identified by the source (sourc) and destination (dest) contents.
- * Returns true if successful, and false if such edge does not exist.
- */
-template <class T>
-bool Graph<T>::removeEdge(const T &sourc, const T &dest) {
-    Vertex<T> * srcVertex = findVertex(sourc);
-    if (srcVertex == nullptr) {
+// Removes an edge from the source vertex to the destination vertex.
+bool Graph::removeEdge(const std::string &sourceName, const std::string &destName) const {
+    Vertex *srcVertex = findVertex(sourceName);
+    if (srcVertex == nullptr)
         return false;
-    }
-    return srcVertex->removeEdge(dest);
+    return srcVertex->removeEdge(destName);
 }
 
-template <class T>
-bool Graph<T>::addBidirectionalEdge(const T &sourc, const T &dest, double w) {
-    auto v1 = findVertex(sourc);
-    auto v2 = findVertex(dest);
+bool Graph::addBidirectionalEdge(const std::string &sourceName, const std::string &destName, double walk, double drive) const {
+    auto v1 = findVertex(sourceName);
+    auto v2 = findVertex(destName);
     if (v1 == nullptr || v2 == nullptr)
         return false;
-    auto e1 = v1->addEdge(v2, w);
-    auto e2 = v2->addEdge(v1, w);
+    auto e1 = v1->addEdge(v2, walk, drive);
+    auto e2 = v2->addEdge(v1, walk, drive);
     e1->setReverse(e2);
     e2->setReverse(e1);
     return true;
 }
+
 
 inline void deleteMatrix(int **m, int n) {
     if (m != nullptr) {
@@ -345,8 +292,59 @@ inline void deleteMatrix(double **m, int n) {
     }
 }
 
-template <class T>
-Graph<T>::~Graph() {
+Graph::~Graph() {
     deleteMatrix(distMatrix, vertexSet.size());
     deleteMatrix(pathMatrix, vertexSet.size());
 }
+
+Graph initialize(const std::string &locs, const std::string &dists) {
+    Graph g;
+    std::string line;
+
+    std::ifstream locFile(locs);
+    if (!locFile.is_open()) {
+        std::cout << "Error opening locations file: " << locs << std::endl;
+        return g;
+    }
+    std::getline(locFile, line); // Skip header line
+    while (std::getline(locFile, line)) {
+        if (line.empty())
+            continue;
+        std::stringstream ss(line);
+        std::string nameStr, idStr, codeStr, parkStr;
+        if (std::getline(ss, nameStr, ',') && std::getline(ss, idStr, ',') &&
+            std::getline(ss, codeStr, ',') && std::getline(ss, parkStr, ',')) {
+            int id = std::stoi(idStr);
+            bool park = (std::stoi(parkStr) != 0);
+            g.addVertex(nameStr, id, codeStr, park);
+            }
+    }
+    locFile.close();
+
+    std::ifstream distFile(dists);
+    if (!distFile.is_open()) {
+        std::cout << "Error opening distances file: " << dists << std::endl;
+        return g;
+    }
+    std::getline(distFile, line); // Skip header line
+    while (std::getline(distFile, line)) {
+        if (line.empty())
+            continue;
+        std::stringstream ss(line);
+        std::string loc1Name, loc2Name, driveStr, walkStr;
+        if (std::getline(ss, loc1Name, ',') &&
+            std::getline(ss, loc2Name, ',') &&
+            std::getline(ss, driveStr, ',') &&
+            std::getline(ss, walkStr, ',')) {
+            double drive = std::stod(driveStr);
+            double walk = std::stod(walkStr);
+            // Note: the ordering of weights remains (walk, drive) as in addEdge.
+            g.addEdge(loc1Name, loc2Name, walk, drive);
+            }
+    }
+    distFile.close();
+
+    return g;
+}
+
+

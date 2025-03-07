@@ -10,7 +10,6 @@
 
 /************************* Vertex  **************************/
 
-// Updated constructor: takes the individual fields directly.
 Vertex::Vertex(const std::string &name, const int &id, const std::string &code, const bool &park)
     : name(name), id(id), code(code), park(park) { }
 
@@ -21,7 +20,6 @@ Edge* Vertex::addEdge(Vertex *d, double walk, double drive) {
     return newEdge;
 }
 
-// Now removeEdge accepts the destination vertex's name.
 bool Vertex::removeEdge(const std::string &destName) {
     bool removedEdge = false;
     auto it = adj.begin();
@@ -118,8 +116,6 @@ void Vertex::setId(const int& newId) {this->id = newId;}
 void Vertex::setCode(const std::string& newCode) {this->code = newCode;}
 void Vertex::setPark(const bool newPark) {this->park = newPark;}
 
-// Since the location information is now stored in individual fields,
-// we no longer need a setLoc function.
 void Vertex::setVisited(bool visited) {
     this->visited = visited;
 }
@@ -331,15 +327,14 @@ Graph initialize(const std::string &locs, const std::string &dists) {
         if (line.empty())
             continue;
         std::stringstream ss(line);
-        std::string loc1Name, loc2Name, driveStr, walkStr;
-        if (std::getline(ss, loc1Name, ',') &&
-            std::getline(ss, loc2Name, ',') &&
+        std::string loc1Str, loc2Str, driveStr, walkStr;
+        if (std::getline(ss, loc1Str, ',') &&
+            std::getline(ss, loc2Str, ',') &&
             std::getline(ss, driveStr, ',') &&
             std::getline(ss, walkStr, ',')) {
             double drive = std::stod(driveStr);
             double walk = std::stod(walkStr);
-            // Note: the ordering of weights remains (walk, drive) as in addEdge.
-            g.addEdge(loc1Name, loc2Name, walk, drive);
+            g.addEdge(loc1Str, loc2Str, walk, drive);
             }
     }
     distFile.close();

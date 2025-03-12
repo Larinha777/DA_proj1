@@ -118,7 +118,7 @@ class Graph {
 public:
     ~Graph();
 
-    Vertex *findVertex(const std::string &name) const;
+    Vertex *findVertex(const std::string &code) const;
 
     // Add a vertex with the given properties.
     // Returns false if a vertex with that name already exists.

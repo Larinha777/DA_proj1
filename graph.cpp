@@ -196,10 +196,10 @@ std::vector<Vertex *> Graph::getVertexSet() const {
     return vertexSet;
 }
 
-// Finds a vertex by its name (assumed to be unique).
-Vertex *Graph::findVertex(const std::string &name) const {
+// Finds a vertex by its code (assumed to be unique).
+Vertex *Graph::findVertex(const std::string &code) const {
     for (auto v : vertexSet)
-        if (v->getName() == name)
+        if (v->getCode() == code)
             return v;
     return nullptr;
 }
@@ -212,9 +212,9 @@ int Graph::findVertexIdx(const std::string &name) const {
 }
 
 // Adds a vertex with the given properties.
-// Returns false if a vertex with the same name already exists.
+// Returns false if a vertex with the same code already exists.
 bool Graph::addVertex(const std::string &name, const int &id, const std::string &code, const bool &park) {
-    if (findVertex(name) != nullptr)
+    if (findVertex(code) != nullptr)
         return false;
     vertexSet.push_back(new Vertex(name, id, code, park));
     return true;
@@ -332,9 +332,10 @@ Graph initialize(const std::string &locs, const std::string &dists) {
             std::getline(ss, loc2Str, ',') &&
             std::getline(ss, driveStr, ',') &&
             std::getline(ss, walkStr, ',')) {
-            double drive = std::stod(driveStr);
+            double drive = (driveStr == "X") ? -1 : std::stod(driveStr); //driving might not be available ("X")
             double walk = std::stod(walkStr);
             g.addEdge(loc1Str, loc2Str, walk, drive);
+            g.addEdge(loc2Str, loc1Str, walk, drive);
             }
     }
     distFile.close();
@@ -342,4 +343,26 @@ Graph initialize(const std::string &locs, const std::string &dists) {
     return g;
 }
 
+int main() {
+    Graph g = initialize("myLocations.csv", "myDistances.csv");
 
+    std::cout << "Vertices in the graph:\n";
+    for (Vertex* v : g.getVertexSet()) {
+        std::cout << "Name: " << v->getName()
+                  << ", ID: " << v->getId()
+                  << ", Code: " << v->getCode()
+                  << ", Parking: " << (v->isPark() ? "Yes" : "No") << '\n';
+    }
+
+    std::cout << "\nEdges in the graph:\n";
+    for (Vertex* v : g.getVertexSet()) {
+        for (Edge* e : v->getAdj()) {
+            std::cout << "From " << e->getOrig()->getName()
+                      << " to " << e->getDest()->getName()
+                      << " | Walk: " << e->getWalk()
+                      << " | Drive: " << e->getDrive() << '\n';
+        }
+    }
+
+    return 0;
+}

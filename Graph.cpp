@@ -2,7 +2,7 @@
 // Created by Vasco Lemos on 06/03/2025.
 //
 
-#include "graph.h"
+#include "Graph.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -67,29 +67,14 @@ bool Vertex::isPark() const {
     return this->park;
 }
 
-int Vertex::getLow() const {
-    return this->low;
-}
-
-void Vertex::setLow(int value) {
-    this->low = value;
-}
-
-int Vertex::getNum() const {
-    return this->num;
-}
-
-void Vertex::setNum(int value) {
-    this->num = value;
-}
 
 std::vector<Edge*> Vertex::getAdj() const {
     return this->adj;
 }
-
 bool Vertex::isVisited() const {
     return this->visited;
 }
+/*
 
 bool Vertex::isProcessing() const {
     return this->processing;
@@ -98,7 +83,7 @@ bool Vertex::isProcessing() const {
 unsigned int Vertex::getIndegree() const {
     return this->indegree;
 }
-
+*/
 double Vertex::getDist() const {
     return this->dist;
 }
@@ -111,14 +96,22 @@ std::vector<Edge *> Vertex::getIncoming() const {
     return this->incoming;
 }
 
+double Vertex::getWalkTime() const{
+    return this->walkTime;
+}
+
+bool Vertex::isAvoiding() const{
+    return this->avoid;
+}
+
 void Vertex::setName(const std::string& newName) {this->name = newName;}
 void Vertex::setId(const int& newId) {this->id = newId;}
 void Vertex::setCode(const std::string& newCode) {this->code = newCode;}
 void Vertex::setPark(const bool newPark) {this->park = newPark;}
-
 void Vertex::setVisited(bool visited) {
     this->visited = visited;
 }
+/*
 
 void Vertex::setProcessing(bool processing) {
     this->processing = processing;
@@ -126,6 +119,15 @@ void Vertex::setProcessing(bool processing) {
 
 void Vertex::setIndegree(unsigned int indegree) {
     this->indegree = indegree;
+}
+*/
+
+void Vertex::setWalkTime(double time) {
+    this->walkTime = time;
+}
+
+void Vertex::setAvoiding(bool avoid) {
+    this->avoid = avoid;
 }
 
 void Vertex::setDist(double dist) {
@@ -163,10 +165,10 @@ Vertex *Edge::getDest() const {
 Vertex *Edge::getOrig() const {
     return this->orig;
 }
-
 Edge *Edge::getReverse() const {
     return this->reverse;
 }
+/*
 
 bool Edge::isSelected() const {
     return this->selected;
@@ -175,10 +177,19 @@ bool Edge::isSelected() const {
 void Edge::setSelected(bool selected) {
     this->selected = selected;
 }
+*/
 
 void Edge::setReverse(Edge *reverse) {
     this->reverse = reverse;
 }
+bool Edge::isAvoiding() const {
+    return this->avoid;
+}
+
+void Edge::setAvoiding(bool avoid) {
+    this->avoid = avoid;
+}
+
 
 void Edge::setWalk(const double walk) { this->walk = walk; }
 double Edge::getWalk() const { return this->walk; }
@@ -200,6 +211,14 @@ std::vector<Vertex *> Graph::getVertexSet() const {
 Vertex *Graph::findVertex(const std::string &code) const {
     for (auto v : vertexSet)
         if (v->getCode() == code)
+            return v;
+    return nullptr;
+}
+
+// Finds a vertex by its id.
+Vertex *Graph::findVertex(const int &id) const {
+    for (auto v : vertexSet)
+        if (v->getId() == id)
             return v;
     return nullptr;
 }
@@ -312,8 +331,10 @@ Graph initialize(const std::string &locs, const std::string &dists) {
             std::getline(ss, codeStr, ',') && std::getline(ss, parkStr, ',')) {
             int id = std::stoi(idStr);
             bool park = (std::stoi(parkStr) != 0);
-            g.addVertex(nameStr, id, codeStr, park);
+            if (g.addVertex(nameStr, id, codeStr, park) == false) {
+                std::cout<<"Problem adding vertex "<<nameStr<<std::endl;
             }
+        }
     }
     locFile.close();
 
@@ -334,35 +355,16 @@ Graph initialize(const std::string &locs, const std::string &dists) {
             std::getline(ss, walkStr, ',')) {
             double drive = (driveStr == "X") ? -1 : std::stod(driveStr); //driving might not be available ("X")
             double walk = std::stod(walkStr);
-            g.addEdge(loc1Str, loc2Str, walk, drive);
-            g.addEdge(loc2Str, loc1Str, walk, drive);
+
+            if (g.addEdge(loc1Str, loc2Str, walk, drive) == 0) {
+                std::cout<<"Problem adding Edge"<<std::endl;
             }
+            if (g.addEdge(loc2Str, loc1Str, walk, drive) == 0) {
+                std::cout<<"Problem adding Edge"<<std::endl;
+            }
+        }
     }
     distFile.close();
 
     return g;
-}
-
-int main() {
-    Graph g = initialize("myLocations.csv", "myDistances.csv");
-
-    std::cout << "Vertices in the graph:\n";
-    for (Vertex* v : g.getVertexSet()) {
-        std::cout << "Name: " << v->getName()
-                  << ", ID: " << v->getId()
-                  << ", Code: " << v->getCode()
-                  << ", Parking: " << (v->isPark() ? "Yes" : "No") << '\n';
-    }
-
-    std::cout << "\nEdges in the graph:\n";
-    for (Vertex* v : g.getVertexSet()) {
-        for (Edge* e : v->getAdj()) {
-            std::cout << "From " << e->getOrig()->getName()
-                      << " to " << e->getDest()->getName()
-                      << " | Walk: " << e->getWalk()
-                      << " | Drive: " << e->getDrive() << '\n';
-        }
-    }
-
-    return 0;
 }

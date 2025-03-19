@@ -11,6 +11,7 @@
 #include <vector>
 #include <limits>
 #include <string>
+#include "MutablePriorityQueue.h" // not needed for now
 
 #define INF std::numeric_limits<double>::max()
 
@@ -31,11 +32,14 @@ public:
 
     std::vector<Edge *> getAdj() const;
     bool isVisited() const;
-    bool isProcessing() const;
-    unsigned int getIndegree() const;
+    // bool isProcessing() const;
+    // unsigned int getIndegree() const;
     double getDist() const;
     Edge *getPath() const;
     std::vector<Edge *> getIncoming() const;
+
+    double getWalkTime() const;
+    bool isAvoiding() const;
 
     void setName(const std::string& newName);
     void setId(const int& newId);
@@ -43,14 +47,12 @@ public:
     void setPark(bool newPark);
 
     void setVisited(bool visited);
-    void setProcessing(bool processing);
+    // void setProcessing(bool processing);
+    // void setIndegree(unsigned int indegree);
 
-    int getLow() const;
-    void setLow(int value);
-    int getNum() const;
-    void setNum(int value);
+    void setWalkTime(double time);
+    void setAvoiding(bool avoid);
 
-    void setIndegree(unsigned int indegree);
     void setDist(double dist);
     void setPath(Edge *path);
 
@@ -59,20 +61,23 @@ public:
     bool removeEdge(const std::string &destName);
     void removeOutgoingEdges();
 
+    friend class MutablePriorityQueue<Vertex>;
 protected:
     std::string name;
     int id;
     std::string code;
     bool park;
 
+    double walkTime;
+    bool avoid;
+
     // Outgoing edges
     std::vector<Edge *> adj;
 
     // auxiliary fields
     bool visited = false; // used by DFS, BFS, Prim ...
-    bool processing = false; // used by isDAG (in addition to the visited attribute)
-    int low = -1, num = -1; // used by SCC Tarjan
-    unsigned int indegree; // used by topsort
+    // bool processing = false; // used by isDAG (in addition to the visited attribute)
+    //unsigned int indegree; // used by topsort
     double dist = 0;
     Edge *path = nullptr;
 
@@ -90,11 +95,14 @@ public:
     Edge(Vertex *orig, Vertex *dest, double walk, double drive);
 
     Vertex *getDest() const;
-    bool isSelected() const;
+    // bool isSelected() const;
     Vertex *getOrig() const;
     Edge *getReverse() const;
 
-    void setSelected(bool selected);
+    bool isAvoiding() const;
+    void setAvoiding(bool avoid);
+
+    // void setSelected(bool selected);
     void setReverse(Edge *reverse);
 
     // Functions to modify or return the weight parameters.
@@ -105,10 +113,10 @@ public:
 
 protected:
     Vertex *dest;  // destination vertex
-    bool selected = false;
+    //bool selected = false;
     Vertex *orig;  // origin vertex
     Edge *reverse = nullptr;  // pointer to the reverse edge (if bidirectional)
-
+    bool avoid;
     double drive, walk;
 };
 
@@ -119,6 +127,7 @@ public:
     ~Graph();
 
     Vertex *findVertex(const std::string &code) const;
+    Vertex *findVertex(const int &id) const;
 
     // Add a vertex with the given properties.
     // Returns false if a vertex with that name already exists.

@@ -30,18 +30,26 @@ void dijkstra(Graph * g, const int &origin, const int &dest) {
     while (!q.empty()) {
 
         Vertex *v = q.extractMin();
+        //std::cout << "Analizing "<<v->getId()<<std::endl;
+        if (v->getId() == dest) {
+            //std::cout << "Got it"<<std::endl;
 
-        if (v->getId() == dest) {break;}
+            break;
+        }
         for (auto e : v->getAdj()) {
 
             if (e->isAvoiding() || e->getDrive()==-1) {continue;}
             Vertex *w = e->getDest();
+            //std::cout << "loop "<<w->getId()<<std::endl;
+
             if (w->isAvoiding() || w->isVisited()) {
                 continue;
             } //skips vertex that were used in the first route + the ones to avoid
 
             double oldDist = w->getDist();;
             if (relax(e)) {
+                //std::cout << "relax "<<w->getId()<<std::endl;
+
                 if (oldDist == INF) {
                     q.insert(w);
                 }else {

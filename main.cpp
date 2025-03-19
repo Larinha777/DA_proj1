@@ -4,25 +4,22 @@
 int main() {
     Graph g = initialize("../loc.csv", "../dist.csv");
 
-    //RestrictedDriving(&g, 5, 4, {2},{},5);
     /*
-            SimpleDriving(&g, 3, 8);
-        Source:3
-        Destination:8
-        BestDrivingRoute:3,2,4,8(19)
-        AlternativeDrivingRoute:3,7,8(34)
+    SimpleDriving(&g, 3, 8);
+    std::cout<<"\n";
+    SimpleDriving(&g,8,1);
+    std::cout<<"\n";
 
-            SimpleDriving(&g,8,1);
-        Source:8
-        Destination:1
-        BestDrivingRoute:8,4,2,1(24)
-        AlternativeDrivingRoute:none
-
-            RestrictedDriving(&g, 5, 4, {2},{},5);
-        Source:5
-        Destination:4
-        RestrictedDrivingRoute:5,3,7,8,4(52)
+    RestrictedDriving(&g, 5, 4, {2},{},5);
+    std::cout<<"\n";
+    RestrictedDriving(&g, 5, 4, {},{{3,2},{7,8}},5);
+    std::cout<<"\n";
+    RestrictedDriving(&g, 5, 4, {2},{{4,7}},5);
+    std::cout<<"\n";
+    RestrictedDriving(&g, 5, 4, {},{},7);
+    std::cout<<"\n";
     */
+
 
 
     /* Output the content

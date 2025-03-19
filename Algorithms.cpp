@@ -1,16 +1,16 @@
 #include "Algorithms.h"
 
 void printPath(const std::vector<int> &v) {
-    for ( int i = v.size()-1 ; i > 0 ; i-- ) {
+    for ( int i = 0 ; i <v.size()-1 ; i++ ) {
         std::cout << v[i] << ",";
     }
-    std::cout << v[0];
+    std::cout << v[v.size()-1];
 }
 
-std::vector<int> getPath(Graph * g, const int &origin, const int &dest, int &time) {
+std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &time) {
     std::vector<int> res;
     Vertex *v = g->findVertex(dest);
-    time = v->getDist();
+    time += v->getDist();
     while (v->getId() != origin) {
 
         //marks the route as visited in case it is supposed to get the alternative route later
@@ -25,7 +25,7 @@ std::vector<int> getPath(Graph * g, const int &origin, const int &dest, int &tim
         v = v->getPath()->getOrig();
     }
     res.push_back(v->getId());
-    //std::reverse(res.begin(), res.end());
+    std::reverse(res.begin(), res.end());
     return res;
 }
 
@@ -60,23 +60,24 @@ void SimpleDriving(Graph * g, const int &origin, const int &dest) {
     }
 
     dijkstra(g, origin, dest);
-    int time;
+    double time;
     std::vector<int> path1 = getPath(g, origin, dest, time);
 
     std::cout<<"BestDrivingRoute:";
     if (path1.empty()) {
         std::cout <<"none\n";
-        std::cout<<"AlternativeDrivingRoute:none";
+        std::cout<<"AlternativeDrivingRoute:none\n";
         return;
     }
 
     printPath(path1);
     std::cout <<"("<<time<<")\nAlternativeDrivingRoute:";
     dijkstra(g, origin, dest);
+    time = 0;
     std::vector<int> path2 = getPath(g, origin, dest, time);
 
     if (path2.empty()) {
-        std::cout <<"none";
+        std::cout <<"none\n";
         return;
     }
     printPath(path2);
@@ -89,20 +90,37 @@ void RestrictedDriving(Graph * g, const int &origin, const int &dest, const std:
     const std::vector<std::pair<int,int>> &avoidEdges,const int &includeNode) {
 
     std::cout << "Source:"<<origin << "\nDestination:" << dest << std::endl;
+    std::cout<<"RestrictedDrivingRoute:";
 
     initAvoid(g, avoidNodes, avoidEdges);
+    double time = 0;
+    std::vector<int> path1;
+    if (origin != includeNode) {
+        dijkstra(g, origin, includeNode);
+        path1 = getPath(g, origin, includeNode, time);
+        if (path1.empty()) {
+            std::cout <<"none\n";
+            return;
+        }
+        path1.pop_back();
+        //printPath(path1);
+        //std::cout<<",";
+    }
 
-    dijkstra(g, origin, dest);
-    int time;
-    std::vector<int> path1 = getPath(g, origin, dest, time);
+    dijkstra(g, includeNode, dest);
+    std::vector<int> path2 = getPath(g, includeNode, dest, time);
 
-    std::cout<<"RestrictedDrivingRoute:";
-    if (path1.empty()) {
+    if (path2.empty()) {
         std::cout <<"none\n";
         return;
     }
 
-    printPath(path1);
+    if (origin != includeNode) {
+        printPath(path1);
+        std::cout <<",";
+    }
+
+    printPath(path2);
     std::cout <<"("<<time<<")\n";
 
 }

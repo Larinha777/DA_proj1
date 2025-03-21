@@ -8,6 +8,6 @@ add_executable(DAProject1 main.cpp
         Graph.h
         MutablePriorityQueue.h
         Algorithms.cpp
-        Dijkstra.h
-        Dijkstra.cpp
-        Algorithms.h)
+        Algorithms.h
+        util.cpp
+        util.h)

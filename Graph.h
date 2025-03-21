@@ -111,6 +111,10 @@ public:
     void setDrive(double drive);
     double getDrive() const;
 
+    //mode 0: driving, mode 1: walking
+    //possible to add other modes later, eg bike
+    void setTime (double time, int mode);
+    double getTime(int mode) const;
 protected:
     Vertex *dest;  // destination vertex
     //bool selected = false;

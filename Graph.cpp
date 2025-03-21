@@ -196,6 +196,31 @@ double Edge::getWalk() const { return this->walk; }
 void Edge::setDrive(const double drive) { this->drive = drive; }
 double Edge::getDrive() const { return drive; }
 
+void Edge::setTime(const double time, const int mode) {
+    switch (mode) {
+        case 0:
+            this->drive = time;
+            break;
+        case 1:
+            this->walk = time;
+                break;
+        default:
+            std::cout<<"Mode not found"<<std::endl;
+    }
+}
+double Edge::getTime(const int mode) const {
+    switch (mode) {
+        case 0:
+            return this->drive;
+        break;
+        case 1:
+            return this->walk;
+        break;
+        default:
+            std::cout<<"Mode not found"<<std::endl;
+        return -1;
+    }
+}
 
 /********************** Graph  ****************************/
 

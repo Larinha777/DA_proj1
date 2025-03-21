@@ -1,133 +1,184 @@
 #include "Algorithms.h"
 
-void printPath(const std::vector<int> &v) {
-    for ( int i = 0 ; i <v.size()-1 ; i++ ) {
-        std::cout << v[i] << ",";
-    }
-    std::cout << v[v.size()-1];
-}
 
-std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &time) {
-    std::vector<int> res;
-    Vertex *v = g->findVertex(dest);
-    time += v->getDist();
-    while (v->getId() != origin) {
 
-        //marks the route as visited in case it is supposed to get the alternative route later
-        if (v->getId() != dest) {
-            v->setVisited(true);
-        }
+void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, Vertex **u, const double maxWalkTime) {
 
-        res.push_back(v->getId());
-        if (v->getPath() == nullptr) {
-            return {};
-        }
-        v = v->getPath()->getOrig();
-    }
-    res.push_back(v->getId());
-    std::reverse(res.begin(), res.end());
-    return res;
-}
-
-// Set all Vertex to not visited and see if any should be avoided
-void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std::vector<std::pair<int,int>> &avoidEdges) {
+    //initialize all vertex
+    //remove from here in future modifications
     for (auto v : g->getVertexSet()) {
-        v->setVisited(false);
-        v->setAvoiding(avoidNodes.contains(v->getId()));
+        v->setDist(INF);
+        v->setPath(nullptr);
+    }
 
-        for (auto e: v->getAdj()) {
-            e->setAvoiding(false);
-            for (auto j : avoidEdges) {
-                if ((e->getOrig()->getId() == j.first && e->getDest()->getId() == j.second)
-                    || (e->getOrig()->getId() == j.second && e->getDest()->getId() == j.first)) {
-                    e->setAvoiding(true);
+    Vertex* s = g->findVertex(origin);
+    s->setDist(0);
+
+    MutablePriorityQueue<Vertex> q;
+    q.insert(s);
+
+    while (!q.empty()) {
+
+        Vertex *v = q.extractMin();
+        //std::cout << "Analyzing "<<v->getId()<<std::endl;
+        if (mode == 0 && v->getId() == dest) {
+            //std::cout << "Got it"<<std::endl;
+            break;
+        }
+        if (v->isPark()) {
+            if (mode==1) {
+                v->setWalkTime(v->getDist());
+            } else if (u != nullptr || maxWalkTime != -1) {
+                *u = betterPark(*u, v, maxWalkTime) ? *u : v;
+            }
+        }
+
+        for (auto e : v->getAdj()) {
+
+            if (e->isAvoiding() || e->getTime(mode)==-1) {continue;}
+            Vertex *w = e->getDest();
+            //std::cout << "loop "<<w->getId()<<std::endl;
+
+            if (w->isAvoiding() || w->isVisited()) {
+                continue;
+            } //skips vertex that were used in the first route + the ones to avoid
+
+            double oldDist = w->getDist();;
+            if (relax(e, mode)) {
+                //std::cout << "relax "<<w->getId()<<std::endl;
+
+                if (oldDist == INF) {
+                    q.insert(w);
+                }else {
+                    q.decreaseKey(w);
                 }
             }
         }
     }
 }
 
+
+
 // Fastest Route + Independent Route Planning
-void SimpleDriving(Graph * g, const int &origin, const int &dest) {
-    std::cout << "Source:"<<origin << "\nDestination:" << dest << std::endl;
+std::string SimpleDriving(Graph * g, const int &origin, const int &dest) {
+    std::ostringstream oss;
+    oss << "Source" << origin << "\nDestination:" << dest << "\n";
 
-    for (auto v : g->getVertexSet()) {
-            v->setAvoiding(false);
-            v->setVisited(false);
-            for (auto e : v->getAdj()) {
-                e->setAvoiding(false);
-            }
-    }
+    // Initialize all nodes to perform the Dijkstra algorithm
+    // Visited set to false
+    initAvoid(g,{},{});
+    dijkstra(g, origin, dest, 0);
 
-    dijkstra(g, origin, dest);
-    double time;
+
+    double time = 0;
     std::vector<int> path1 = getPath(g, origin, dest, time);
 
-    std::cout<<"BestDrivingRoute:";
+    oss<<"BestDrivingRoute:";
     if (path1.empty()) {
-        std::cout <<"none\n";
-        std::cout<<"AlternativeDrivingRoute:none\n";
-        return;
+        oss <<"none\n";
+        oss<<"AlternativeDrivingRoute:none\n";
+        return oss.str();
     }
+    oss << path1[0];
+    printPath(path1, oss);
+    oss <<"("<<time<<")\n";
+    oss<<"AlternativeDrivingRoute:";
 
-    printPath(path1);
-    std::cout <<"("<<time<<")\nAlternativeDrivingRoute:";
-    dijkstra(g, origin, dest);
+    // Initialize all nodes to perform the Dijkstra algorithm
+    // Visited not altered, nodes and edges to be avoided are also not altered
+    for (auto v : g->getVertexSet()) {
+        v->setDist(INF);
+        v->setPath(nullptr);
+    }
+    dijkstra(g, origin, dest, 0);
+
     time = 0;
     std::vector<int> path2 = getPath(g, origin, dest, time);
 
     if (path2.empty()) {
-        std::cout <<"none\n";
-        return;
+        oss <<"none\n";
+        return oss.str();
     }
-    printPath(path2);
-    std::cout <<"("<<time<<")\n";
-
+    printPath(path2, oss);
+    oss <<"("<<time<<")\n";
+    return oss.str();
 }
 
 // Restricted Route Planning
-void RestrictedDriving(Graph * g, const int &origin, const int &dest, const std::unordered_set<int> &avoidNodes,
+std::string RestrictedDriving(Graph * g, const int &origin, const int &dest, const std::unordered_set<int> &avoidNodes,
     const std::vector<std::pair<int,int>> &avoidEdges,const int &includeNode) {
-
-    std::cout << "Source:"<<origin << "\nDestination:" << dest << std::endl;
-    std::cout<<"RestrictedDrivingRoute:";
+    std::ostringstream oss;
+    oss << "Source:"<<origin << "\nDestination:" << dest << std::endl;
+    oss<<"RestrictedDrivingRoute:";
 
     initAvoid(g, avoidNodes, avoidEdges);
     double time = 0;
     std::vector<int> path1;
     if (origin != includeNode) {
-        dijkstra(g, origin, includeNode);
+        dijkstra(g, origin, includeNode, 0);
         path1 = getPath(g, origin, includeNode, time);
         if (path1.empty()) {
-            std::cout <<"none\n";
-            return;
+            oss <<"none\n";
+            return "";
         }
         path1.pop_back();
-        //printPath(path1);
-        //std::cout<<",";
+        initAgain(g);
     }
 
-    dijkstra(g, includeNode, dest);
+    dijkstra(g, includeNode, dest, 0);
     std::vector<int> path2 = getPath(g, includeNode, dest, time);
 
     if (path2.empty()) {
-        std::cout <<"none\n";
-        return;
+        oss <<"none\n";
+        return "";
     }
 
     if (origin != includeNode) {
-        printPath(path1);
-        std::cout <<",";
+        printPath(path1, oss);
+        oss <<",";
     }
 
-    printPath(path2);
-    std::cout <<"("<<time<<")\n";
-
+    printPath(path2, oss);
+    oss <<"("<<time<<")\n";
+    return oss.str();
 }
 
 // Best route for driving and walking
-void DrivingWalking(Graph * g, const int &origin, const int &dest, const std::vector<int> &avoidNodes,
-    const std::vector<std::pair<int,int>> &avoidEdges,const int &includeNode);
+//preciso inicializar walk time
+std::string DrivingWalking(Graph * g, const int &origin, const int &dest, const double maxWalkTime,
+    const std::unordered_set<int> &avoidNodes, const std::vector<std::pair<int,int>> &avoidEdges) {
+    std::ostringstream oss;
+    oss << "Source:"<<origin << "\nDestination:" << dest << std::endl;
+    oss<<"DrivingRoute:";
+
+    for (auto v: g->getVertexSet()) {
+        v->setWalkTime(INF);
+    }
+
+    initAvoid(g, avoidNodes, avoidEdges);
+
+
+    Vertex* p = g->findVertex(origin);
+    dijkstra(g, dest, origin, 1);
+    initAgain(g);
+
+    dijkstra(g, origin, dest,0, &p, maxWalkTime);
+
+    double time1 = 0;
+    std::vector<int> path1 = getPath(g, origin, p->getId(), time1);
+    printPath(path1, oss);
+    oss<<"("<<time1<<")\n";
+    oss<<"ParkingNode:"<<path1.back()<<"\n";
+    oss<<"WalkingRoute:";
+
+    double time2 = 0;
+    dijkstra(g, p->getId(), dest, 1);
+    std::vector<int> path2 = getPath(g, p->getId(), dest, time2);
+    printPath(path2, oss);
+    oss<<"("<<time2<<")\n";
+    oss<<"TotalTime:"<<time1+time2<<"\n";
+    return oss.str();
+}
 
 
 

@@ -20,10 +20,8 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
     while (!q.empty()) {
 
         Vertex *v = q.extractMin();
-        //std::cout << "Analyzing "<<v->getId()<<std::endl;
         if (mode == 0) {
             if (v->getId() == dest) {
-                std::cout << "Got it"<<std::endl;
                 break;
             }
             if (v->isPark() && (u != nullptr || maxWalkTime != -1)) {
@@ -32,7 +30,6 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
         }
         if (mode==1) {
             if (v->getDist() > maxWalkTime) {
-                //std::cout<<v->getDist()<<"Too much walking\n";
                 return;
             }
             if (v->isPark()) {
@@ -44,7 +41,6 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
 
             if (e->isAvoiding() || e->getTime(mode)==-1) {continue;}
             Vertex *w = e->getDest();
-            //std::cout << "loop "<<w->getId()<<std::endl;
 
             if (w->isAvoiding() || w->isVisited()) {
                 continue;
@@ -52,7 +48,6 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
 
             double oldDist = w->getDist();;
             if (relax(e, mode)) {
-                //std::cout << "relax "<<w->getId()<<std::endl;
 
                 if (oldDist == INF) {
                     q.insert(w);

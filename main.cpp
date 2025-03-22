@@ -15,13 +15,13 @@ int main() {
     std::cout<<DrivingWalking(&g, 8, 5, 18, {}, {} )<<"\n";
 
     std::cout<<DrivingWalking(&g, 4, 8, 20, {}, {} )<<"\n";
+    std::cout<<DrivingWalking(&g, 1, 8, 13, {}, {} )<<"\n";
 
     */
-    std::cout<<DrivingWalking(&g, 1, 8, 13, {}, {} )<<"\n";
 
     /*
 
-    ***Edge Cases*** not necessary anymore, they will to happen
+    ***Edge Cases*** not necessary anymore, they will not happen
     SimpleDriving(&g,3,3); // dont know what happens in alternative route
     RestrictedDriving(&g, 3,5, {5},{},3 ); // works but checks everything first
     RestrictedDriving(&g, 3,3, {},{},8 ); // does not work, the path is supposed to be shorter, it does not repeat nodes

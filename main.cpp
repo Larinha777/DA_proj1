@@ -1,20 +1,23 @@
 #include <iostream>
-#include "Graph.h"
-#include "Algorithms.h"
+#include "data_structures/Graph.h"
+#include "algorithms/Algorithms.h"
 int main() {
-    Graph g = initialize("../loc.csv", "../dist.csv");
-    // Graph g = initialize("../Locations.csv", "../Distances.csv");
+    Graph g = initialize("../data/loc.csv", "../data/dist.csv");
+    // Graph g = initialize("../data/Locations.csv", "../data/Distances.csv");
 
-    // std::cout<< SimpleDriving(&g, 3, 8) <<"\n";
 
-    /*std::cout<< SimpleDriving(&g, 8, 1) <<"\n";
+    /*
+    std::cout<< SimpleDriving(&g, 8, 1) <<"\n";
     std::cout<<RestrictedDriving(&g, 5, 4, {2},{},5)<<"\n";
-    std::cout<<RestrictedDriving(&g, 5, 4, {},{{3,2},{7,8}},5)<<"\n";
     std::cout<<RestrictedDriving(&g, 5, 4, {2},{{4,7}},5)<<"\n";
+    std::cout<<RestrictedDriving(&g, 5, 4, {},{{3,2},{7,8}},5)<<"\n";
     std::cout<<RestrictedDriving(&g, 5, 4, {},{},7)<<"\n";
     std::cout<<DrivingWalking(&g, 8, 5, 18, {}, {} )<<"\n";
 
+    std::cout<<DrivingWalking(&g, 4, 8, 20, {}, {} )<<"\n";
+
     */
+    std::cout<<DrivingWalking(&g, 1, 8, 13, {}, {} )<<"\n";
 
     /*
 

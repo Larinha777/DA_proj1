@@ -4,10 +4,10 @@ project(DAProject1)
 set(CMAKE_CXX_STANDARD 26)
 
 add_executable(DAProject1 main.cpp
-        Graph.cpp
-        Graph.h
-        MutablePriorityQueue.h
-        Algorithms.cpp
-        Algorithms.h
-        util.cpp
-        util.h)
+        data_structures/Graph.cpp
+        data_structures/Graph.h
+        data_structures/MutablePriorityQueue.h
+        algorithms/Algorithms.cpp
+        algorithms/Algorithms.h
+        algorithms/util.cpp
+        algorithms/util.h)

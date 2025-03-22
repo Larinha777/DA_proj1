@@ -11,7 +11,7 @@
 #include <vector>
 #include <limits>
 #include <string>
-#include "MutablePriorityQueue.h" // not needed for now
+#include "MutablePriorityQueue.h"
 
 #define INF std::numeric_limits<double>::max()
 

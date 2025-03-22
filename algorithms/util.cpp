@@ -4,11 +4,15 @@
 
 
 void printPath(const std::vector<int> &v, std::ostringstream &oss) {
+    if (v.size() == 0) {
+        return;
+    }
     for ( int i = 0 ; i <v.size()-1 ; i++ ) {
         oss << v[i] << ",";
     }
     oss << v[v.size()-1];
 }
+
 
 std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &time) {
     std::vector<int> res;
@@ -32,14 +36,14 @@ std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &
     return res;
 }
 
-// Set all Verteces to not visited and see if any should be avoided
-// Works for initializing all verteces to perform the Dijkstra Algorithm
+
 void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std::vector<std::pair<int,int>> &avoidEdges) {
     for (auto v : g->getVertexSet()) {
         v->setDist(INF);
         v->setPath(nullptr);
         v->setVisited(false);
         v->setAvoiding(avoidNodes.contains(v->getId()));
+        v->setWalkTime(INF);
 
         for (auto e: v->getAdj()) {
             e->setAvoiding(false);
@@ -54,8 +58,6 @@ void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std:
 }
 
 
-// Initialize all vertex for a second time inside the same algorithm
-// Prepares the graph for the Dijkstra algorithm but does not alter avoiding edges and nodes
 void initAgain(Graph * g) {
     for (auto v : g->getVertexSet()) {
         v->setDist(INF);
@@ -65,7 +67,6 @@ void initAgain(Graph * g) {
 }
 
 
-//edge relaxation
 bool relax(Edge *edge, const int mode) { // d[u] + w(u,v) < d[v]
     Vertex *u = edge->getOrig();
     Vertex *v = edge->getDest();
@@ -80,12 +81,31 @@ bool relax(Edge *edge, const int mode) { // d[u] + w(u,v) < d[v]
 bool betterPark(Vertex *u, Vertex *v, double maxWalkTime) { //is u a better parking spot thant v?
     if (!u->isPark()) return false; // first time
     if (v->getWalkTime() > maxWalkTime) {
-        if ( u->getWalkTime() > maxWalkTime ) {
-            return u->getDist() + u->getWalkTime() < v->getDist() + v->getWalkTime();
+        if ( u->getWalkTime() > maxWalkTime ) {  //both vertexes exceed maxWalkingTime
+            if (u->getDist() + u->getWalkTime() == v->getDist() + v->getWalkTime()) { //same overall time
+                return u->getWalkTime() > v->getWalkTime();
+            }
+            return (u->getDist() + u->getWalkTime() < v->getDist() + v->getWalkTime());
         }
-        return true;
+        return true; // just v exceeds max walking time
     }
-    if (u->getWalkTime() > maxWalkTime) return false;
-    return u->getDist() + u->getWalkTime() < v->getDist() + v->getWalkTime();
+    if (u->getWalkTime() > maxWalkTime) return false;    // Vertex u exceeds max time but v doesnt
+
+
+    if (u->getDist() + u->getWalkTime() == v->getDist() + v->getWalkTime()) {// if both have the same time, the one that walks more is better
+        return u->getWalkTime() > v->getWalkTime();
+    }
+
+    // the one that that takes the least time is better
+    return (u->getDist() + u->getWalkTime() < v->getDist() + v->getWalkTime());
+}
+
+
+//maybe will be remove later
+bool hasParks(Graph * g) {
+    for (auto v: g->getVertexSet()) {
+        if (v->isPark())return true;
+    }
+    return false;
 }
 

@@ -2,9 +2,11 @@
 
 #include <algorithm>
 
+#include "Algorithms.h"
+
 
 void printPath(const std::vector<int> &v, std::ostringstream &oss) {
-    if (v.size() == 0) {
+    if (v.empty()) {
         return;
     }
     for ( int i = 0 ; i <v.size()-1 ; i++ ) {
@@ -14,10 +16,18 @@ void printPath(const std::vector<int> &v, std::ostringstream &oss) {
 }
 
 
-std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &time) {
+std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &time, const int mode) {
     std::vector<int> res;
     Vertex *v = g->findVertex(dest);
-    time += v->getDist();
+
+    if (mode == 0) {
+        time += v->getDist();
+    } else if (mode == 1) {
+        time += v->getWalkDist();
+    } else {
+        return {};
+    }
+
     while (v->getId() != origin) {
 
         //marks the route as visited in case it is supposed to get the alternative route later
@@ -26,10 +36,17 @@ std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &
         }
 
         res.push_back(v->getId());
-        if (v->getPath() == nullptr) {
+        if ( (mode == 0 && v->getPath() == nullptr) || (mode == 1 && v->getWalkPath() == nullptr) ) {
+            time=-1;
             return {};
         }
-        v = v->getPath()->getOrig();
+
+        if (mode == 0) {
+            v = v->getPath()->getOrig();
+        } else if (mode == 1) {
+            v = v->getWalkPath()->getOrig();
+        }
+
     }
     res.push_back(v->getId());
     std::reverse(res.begin(), res.end());
@@ -41,9 +58,10 @@ void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std:
     for (auto v : g->getVertexSet()) {
         v->setDist(INF);
         v->setPath(nullptr);
+        v->setWalkDist(INF);
+        v->setWalkPath(nullptr);
         v->setVisited(false);
         v->setAvoiding(avoidNodes.contains(v->getId()));
-        v->setWalkTime(INF);
 
         for (auto e: v->getAdj()) {
             e->setAvoiding(false);
@@ -73,6 +91,12 @@ bool relax(Edge *edge, const int mode) { // d[u] + w(u,v) < d[v]
     if (v->getDist() > u->getDist() + edge->getTime(mode)) {
         v->setDist(u->getDist() + edge->getTime(mode));
         v->setPath(edge);
+
+        if (mode == 1) {
+            v->setWalkPath(edge);
+            v->setWalkDist(v->getDist());
+        }
+
         return true;
     }
     return false;
@@ -80,32 +104,25 @@ bool relax(Edge *edge, const int mode) { // d[u] + w(u,v) < d[v]
 
 bool betterPark(Vertex *u, Vertex *v, double maxWalkTime) { //is u a better parking spot thant v?
     if (!u->isPark()) return false; // first time
-    if (v->getWalkTime() > maxWalkTime) {
-        if ( u->getWalkTime() > maxWalkTime ) {  //both vertexes exceed maxWalkingTime
-            if (u->getDist() + u->getWalkTime() == v->getDist() + v->getWalkTime()) { //same overall time
-                return u->getWalkTime() > v->getWalkTime();
+    if (v->getWalkDist() > maxWalkTime) {
+        if ( u->getWalkDist() > maxWalkTime ) {  //both vertexes exceed maxWalkingTime
+            if (u->getDist() + u->getWalkDist() == v->getDist() + v->getWalkDist()) { //same overall time
+                return u->getWalkDist() > v->getDist() + v->getWalkDist();
             }
-            return (u->getDist() + u->getWalkTime() < v->getDist() + v->getWalkTime());
+            return (u->getDist() + u->getWalkDist() < v->getDist() + v->getWalkDist());
         }
         return true; // just v exceeds max walking time
     }
-    if (u->getWalkTime() > maxWalkTime) return false;    // Vertex u exceeds max time but v doesnt
+    if (u->getWalkDist() > maxWalkTime) return false;    // Vertex u exceeds max time but v doesnt
 
 
-    if (u->getDist() + u->getWalkTime() == v->getDist() + v->getWalkTime()) {// if both have the same time, the one that walks more is better
-        return u->getWalkTime() > v->getWalkTime();
+    if (u->getDist() + u->getWalkDist() == v->getDist() + v->getWalkDist()) {// if both have the same time, the one that walks more is better
+        return u->getWalkDist() > v->getDist() + v->getWalkDist();
     }
 
     // the one that that takes the least time is better
-    return (u->getDist() + u->getWalkTime() < v->getDist() + v->getWalkTime());
+    return (u->getDist() + u->getWalkDist() < v->getDist() + v->getWalkDist());
 }
 
 
-//maybe will be remove later
-bool hasParks(Graph * g) {
-    for (auto v: g->getVertexSet()) {
-        if (v->isPark())return true;
-    }
-    return false;
-}
 

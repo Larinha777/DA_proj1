@@ -12,7 +12,7 @@
  * @brief Prints the path with commas between each element to the output stream.
  *
  * @param v The vector of ints representing the id of each location in the path.
- * @param oss The output stream where the path in the correct format will be stored.
+ * @param oss The output stream where the path will be stored in the correct format.
  *
  * @note Time complexity: O(n) where n is the size of the vector.
  */
@@ -26,19 +26,20 @@ void printPath(const std::vector<int> &v, std::ostringstream &oss);
  * @param origin The id of the origin vertex of the path that is being calculated.
  * @param dest The id of the destination vertex of the path that is being calculated.
  * @param time A reference to a double where the total time of the path is being held.
+ * @param mode Int of the mode of transportation, 0->driving, 1->walking.
  *
  * @return A vector of ints representing the id of each location in the path.
  *
  * @note Time Complexity: O(n) where n is the size of the return vector.
  */
-std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &time);
+std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &time, int mode);
 
 /**
  * @brief Initializes all vertex to perform the Dijkstra Algorithm.
- * Checks if any vertex or edges should be avoided.
+ * Checks if any vertex or edge should be avoided.
  *
- * @details Resets distance, path and walk time. Mark all vertex as not visited.
- * Set vertex and edges to if they are to be avoided or not.
+ * @details Resets distance, walkDistance, path and walkPath. Mark all vertex as not visited.
+ * Set vertexes and edges to avoid if needed, otherwise to not avoid.
  *
  * @param g A pointer to the graph that is being worked on.
  * @param avoidNodes Unordered set with the ids of the node that are to be avoided.
@@ -53,7 +54,7 @@ void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std:
 /**
  * @brief Initializes the graph for the Dijkstra algorithm.
  *
- * @details Set distance path and visited, to perform the Dijkstra Algorithm.
+ * @details Set distance, path and visited, to perform the Dijkstra Algorithm.
  * This is usually the second time the graph is being initialized for the same input,
  * so the edges and vertexes to be avoided haven't changed. As such they do not need to
  * be altered.
@@ -69,7 +70,7 @@ void initAgain(Graph * g);
  * of v to u if it is better to use edge e from u to v (edge relaxation).
  *
  * @details Called when doing the Dijkstra Algorithm. Differs a little from the original,
- * as a mode is passed representing if the person is walking or driving. That way when we
+ * as an int variable called mode is passed representing if the person is walking or driving. That way, when we
  * want the distance of the edge (time in this case) it is possible to call a method that
  * gives the time according to the mode of transportation.
  *
@@ -104,8 +105,5 @@ bool relax(Edge *edge, int mode);
  * @note Time Complexity: O(1).
  */
 bool betterPark(Vertex *u, Vertex *v, double maxWalkTime);
-
-//maybe will be removed later
-bool hasParks(Graph * g);
 
 #endif //UTIL_H

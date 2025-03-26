@@ -74,16 +74,7 @@ std::vector<Edge*> Vertex::getAdj() const {
 bool Vertex::isVisited() const {
     return this->visited;
 }
-/*
 
-bool Vertex::isProcessing() const {
-    return this->processing;
-}
-
-unsigned int Vertex::getIndegree() const {
-    return this->indegree;
-}
-*/
 double Vertex::getDist() const {
     return this->dist;
 }
@@ -96,12 +87,15 @@ std::vector<Edge *> Vertex::getIncoming() const {
     return this->incoming;
 }
 
-double Vertex::getWalkTime() const{
-    return this->walkTime;
-}
-
 bool Vertex::isAvoiding() const{
     return this->avoid;
+}
+
+double Vertex::getWalkDist() const {
+    return walkDist;
+}
+Edge *Vertex::getWalkPath() const {
+    return walkPath;
 }
 
 void Vertex::setName(const std::string& newName) {this->name = newName;}
@@ -110,20 +104,6 @@ void Vertex::setCode(const std::string& newCode) {this->code = newCode;}
 void Vertex::setPark(const bool newPark) {this->park = newPark;}
 void Vertex::setVisited(bool visited) {
     this->visited = visited;
-}
-/*
-
-void Vertex::setProcessing(bool processing) {
-    this->processing = processing;
-}
-
-void Vertex::setIndegree(unsigned int indegree) {
-    this->indegree = indegree;
-}
-*/
-
-void Vertex::setWalkTime(double time) {
-    this->walkTime = time;
 }
 
 void Vertex::setAvoiding(bool avoid) {
@@ -151,6 +131,15 @@ void Vertex::deleteEdge(const Edge *edge) const {
         }
     }
     delete edge;
+}
+
+
+
+void Vertex::setWalkDist(double dist) {
+    this->walkDist = dist;
+}
+void Vertex::setWalkPath(Edge *path) {
+    this->walkPath = path;
 }
 
 /********************** Edge  ****************************/

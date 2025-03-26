@@ -3,31 +3,40 @@
 #include "algorithms/Algorithms.h"
 int main() {
     Graph g = initialize("../data/loc.csv", "../data/dist.csv");
+
+    // Graph g = initialize("../data/extra_loc.csv", "../data/extra_dis.csv");
     // Graph g = initialize("../data/Locations.csv", "../data/Distances.csv");
 
+/* Alternative Routes
+    * Source:8
+    Destination:5
+    DrivingRoute1:8,4,2,3(19)
+    ParkingNode1:3
+    WalkingRoute1:3,5(10)
+    TotalTime1:29
+    DrivingRoute2:8,4,6(21)
+    ParkingNode2:6
+    WalkingRoute2:6,5(10)
+    TotalTime2:31
+ */
+
+    std::cout<<DrivingWalking(&g, 8, 5, 18, {}, {} )<<"\n";
+    std::cout<<DrivingWalking(&g, 8, 5, 5, {}, {} )<<"\n";
 
     /*
+    std::cout<<SimpleDriving(&g, 3, 8 )<<"\n";
     std::cout<< SimpleDriving(&g, 8, 1) <<"\n";
-    std::cout<<RestrictedDriving(&g, 5, 4, {2},{},5)<<"\n";
-    std::cout<<RestrictedDriving(&g, 5, 4, {2},{{4,7}},5)<<"\n";
-    std::cout<<RestrictedDriving(&g, 5, 4, {},{{3,2},{7,8}},5)<<"\n";
-    std::cout<<RestrictedDriving(&g, 5, 4, {},{},7)<<"\n";
-    std::cout<<DrivingWalking(&g, 8, 5, 18, {}, {} )<<"\n";
 
-    std::cout<<DrivingWalking(&g, 4, 8, 20, {}, {} )<<"\n";
+    std::cout<<RestrictedDriving(&g, 5, 4, {2},{},5)<<"\n";
+    std::cout<<RestrictedDriving(&g, 5, 4, {},{{3,2},{7,8}},5)<<"\n";
+    std::cout<<RestrictedDriving(&g, 5, 4, {2},{{4,7}},5)<<"\n";
+    std::cout<<RestrictedDriving(&g, 5, 4, {},{},7)<<"\n";
+
+
     std::cout<<DrivingWalking(&g, 1, 8, 13, {}, {} )<<"\n";
 
     */
 
-    /*
-
-    ***Edge Cases*** not necessary anymore, they will not happen
-    SimpleDriving(&g,3,3); // dont know what happens in alternative route
-    RestrictedDriving(&g, 3,5, {5},{},3 ); // works but checks everything first
-    RestrictedDriving(&g, 3,3, {},{},8 ); // does not work, the path is supposed to be shorter, it does not repeat nodes
-    RestrictedDriving(&g, 3,3, {3},{},3 ); // what is the priority? Avoid or include? Should return none I think
-
-    */
 
    return 0;
 }

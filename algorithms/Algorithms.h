@@ -8,7 +8,18 @@
 #include "../data_structures/MutablePriorityQueue.h"
 #include "util.h"
 
-void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, const double maxWalkTime = -1, Vertex **u = nullptr);
+/**
+ * @param g A pointer to the graph that has the origin and destination Vertex.
+ * @param origin The id of the origin vertex of the path wanted.
+ * @param dest The id of the destination vertex of the path wanted.
+ * @param mode Int of the mode of transportation, 0->driving, 1->walking.
+ * @param maxWalkTime Double with maximum time allowed to be walking by the algorithm. (not mandatory)
+ * @param u Pointer to a pointer of a vertex of the better parking spot for the requested route, default value nullptr,
+ * when the function is called, the vertex is the origin.
+ *
+ * @note Time Complexity: O((V+E)logV) where V and E are the number of vertexes and edges respectively.
+ */
+void dijkstra(Graph * g, const int &origin, const int &dest, int mode, double maxWalkTime = -1, Vertex **u = nullptr);
 
 
 
@@ -23,7 +34,7 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
  *
  * @return A string where the correct output for the route that was asked.
  *
- * @note Time Complexity:
+ * @note Time Complexity: O((V+E)logV) where V and E are the number of vertexes and edges respectively.
  */
 std::string SimpleDriving(Graph * g, const int &origin, const int &dest);
 
@@ -78,6 +89,8 @@ std::string DrivingWalking(Graph * g, const int &origin, const int &dest, double
 // representing the best feasible alternative routes that approximate user requirements. For example, if the
 // suggestions increase the maximum walking time, indicate the new time. Present 2 alternatives, sorted by
 // overall travel time, but always including a driving and a walking segment.
+
+void DrivingWalkingAlternatives(Graph * g, const int &origin, const int &dest, std::ostringstream &oss);
 
 
 #endif //ALGORITHMS_H

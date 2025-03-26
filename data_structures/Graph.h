@@ -32,14 +32,14 @@ public:
 
     std::vector<Edge *> getAdj() const;
     bool isVisited() const;
-    // bool isProcessing() const;
-    // unsigned int getIndegree() const;
     double getDist() const;
     Edge *getPath() const;
     std::vector<Edge *> getIncoming() const;
 
-    double getWalkTime() const;
+
     bool isAvoiding() const;
+    double getWalkDist() const;
+    Edge *getWalkPath() const;
 
     void setName(const std::string& newName);
     void setId(const int& newId);
@@ -47,14 +47,12 @@ public:
     void setPark(bool newPark);
 
     void setVisited(bool visited);
-    // void setProcessing(bool processing);
-    // void setIndegree(unsigned int indegree);
-
-    void setWalkTime(double time);
-    void setAvoiding(bool avoid);
-
     void setDist(double dist);
     void setPath(Edge *path);
+
+    void setAvoiding(bool avoid);
+    void setWalkDist(double dist);
+    void setWalkPath(Edge *path);
 
     Edge *addEdge(Vertex *dest, double walk, double drive);
 
@@ -68,18 +66,18 @@ protected:
     std::string code;
     bool park;
 
-    double walkTime;
-    bool avoid;
-
     // Outgoing edges
     std::vector<Edge *> adj;
 
     // auxiliary fields
     bool visited = false; // used by DFS, BFS, Prim ...
-    // bool processing = false; // used by isDAG (in addition to the visited attribute)
-    //unsigned int indegree; // used by topsort
     double dist = 0;
     Edge *path = nullptr;
+
+    double walkDist = INF;
+    Edge *walkPath = nullptr;
+    bool avoid = false;
+
 
     std::vector<Edge *> incoming; // incoming edges
 

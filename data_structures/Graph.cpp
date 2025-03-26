@@ -48,7 +48,7 @@ void Vertex::removeOutgoingEdges() {
 }
 
 bool Vertex::operator<(const Vertex &vertex) const {
-    return this->getDist(0) < vertex.getDist(0);
+    return this->getDist() < vertex.getDist();
 }
 
 std::string Vertex::getName() const {
@@ -77,6 +77,8 @@ bool Vertex::isVisited() const {
 
 double Vertex::getDist(const int mode) const {
     switch (mode) {
+        case -1:
+            return this->dist;
         case 0:
             return this->driveDist;
         case 1:
@@ -124,7 +126,9 @@ void Vertex::setDist(const double dist, const int mode) {
             break;
         case 1:
             this->walkDist = dist;
+            break;
     }
+    this->dist = dist;
 }
 
 void Vertex::setPath(Edge *path, int mode) {

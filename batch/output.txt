@@ -1,4 +1,0 @@
-Source:8
-Destination:1
-RestrictedDrivingRoute:8,7,3,2,1(49)
-

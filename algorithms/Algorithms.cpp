@@ -11,7 +11,7 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
     s->setDist(0, mode);
 
     //initialize a priority queue and add origin to it
-    MutablePriorityQueue<Vertex> q(mode);
+    MutablePriorityQueue<Vertex> q;
     q.insert(s);
 
     while (!q.empty()) {

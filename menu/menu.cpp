@@ -122,7 +122,7 @@ string Menu::getCityFromUser(const string& prompt) {
 void Menu::batchProcess() {
     tc_clear_screen();
 
-    ifstream inputFile("../batch/input.txt");
+    ifstream inputFile("../batch/input8.txt");
     ofstream outputFile("../batch/output.txt");
 
     if (!inputFile.is_open() || !outputFile.is_open()) {

@@ -92,7 +92,7 @@ public:
      * @param mode The mode of travel (e.g., 0 for driving, 1 for walking).
      * @return The distance as a double.
      */
-    double getDist(int mode) const;
+    double getDist(int mode = -1) const;
 
     /**
      * @brief Gets the previous edge in the shortest path.
@@ -214,7 +214,7 @@ protected:
     double walkDist = INF;            ///< Distance for walking mode.
     Edge *walkPath = nullptr;         ///< Previous edge in walking mode.
     bool avoid = false;               ///< Flag to indicate avoiding this vertex.
-
+    double dist = INF;                ///< Distance for driving mode.
     std::vector<Edge *> incoming;     ///< Incoming edges.
 
     int queueIndex = 0;               ///< Required by MutablePriorityQueue and UFDS.

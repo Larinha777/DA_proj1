@@ -8,10 +8,10 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
 
     //get the origin
     Vertex* s = g->findVertex(origin);
-    s->setDist(0);
+    s->setDist(0, mode);
 
     //initialize a priority queue and add origin to it
-    MutablePriorityQueue<Vertex> q;
+    MutablePriorityQueue<Vertex> q(mode);
     q.insert(s);
 
     while (!q.empty()) {
@@ -26,7 +26,7 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
             }
         }
         if (mode==1) {
-            if (v->getDist() > maxWalkTime) {
+            if (v->getDist(mode) > maxWalkTime) {
                 return;
             }
         }
@@ -40,7 +40,7 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
                 continue;
             } //skips vertex that were used in the first route (visited) + the ones to avoid
 
-            double oldDist = w->getDist();;
+            double oldDist = w->getDist(mode);;
             if (relax(e, mode)) {
                 if (oldDist == INF) {
                     q.insert(w);
@@ -56,17 +56,19 @@ void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, con
 
 // Fastest Route + Independent Route Planning
 std::string SimpleDriving(Graph * g, const int &origin, const int &dest) {
+    int mode = 0;
+
     std::ostringstream oss;
     oss << "Source:" << origin << "\nDestination:" << dest << "\n";
 
     // Initialize all nodes to perform the Dijkstra algorithm
     // Visited set to false
-    initAvoid(g,{},{});
-    dijkstra(g, origin, dest, 0); //perform dijkstra
+    initAvoid(g,{},{}, mode);
+    dijkstra(g, origin, dest, mode); //perform dijkstra
 
     //get the path of the fastest route
     double time = 0;
-    std::vector<int> path1 = getPath(g, origin, dest, time, 0);
+    std::vector<int> path1 = getPath(g, origin, dest, time, mode);
 
     oss<<"BestDrivingRoute:";
 
@@ -84,14 +86,14 @@ std::string SimpleDriving(Graph * g, const int &origin, const int &dest) {
     // Initialize all nodes to perform the Dijkstra algorithm
     // Visited not altered, nodes and edges to be avoided are also not altered
     for (auto v : g->getVertexSet()) {
-        v->setDist(INF);
-        v->setPath(nullptr);
+        v->setDist(INF, mode);
+        v->setPath(nullptr,mode);
     }
 
-    dijkstra(g, origin, dest, 0);
+    dijkstra(g, origin, dest, mode);
 
     time = 0;
-    std::vector<int> path2 = getPath(g, origin, dest, time, 0);
+    std::vector<int> path2 = getPath(g, origin, dest, time, mode);
 
     if (path2.empty()) {
         oss <<"none\n";
@@ -105,26 +107,27 @@ std::string SimpleDriving(Graph * g, const int &origin, const int &dest) {
 // Restricted Route Planning
 std::string RestrictedDriving(Graph * g, const int &origin, const int &dest, const std::unordered_set<int> &avoidNodes,
     const std::vector<std::pair<int,int>> &avoidEdges,const int &includeNode) {
+    int mode = 0;
     std::ostringstream oss;
     oss << "Source:"<<origin << "\nDestination:" << dest << std::endl;
     oss<<"RestrictedDrivingRoute:";
 
-    initAvoid(g, avoidNodes, avoidEdges);
+    initAvoid(g, avoidNodes, avoidEdges, mode);
     double time = 0;
     std::vector<int> path1;
     if (origin != includeNode) {
-        dijkstra(g, origin, includeNode, 0);
-        path1 = getPath(g, origin, includeNode, time, 0);
+        dijkstra(g, origin, includeNode, mode);
+        path1 = getPath(g, origin, includeNode, time, mode);
         if (path1.empty()) {
             oss <<"none\n";
             return "";
         }
         path1.pop_back();
-        initAgain(g);
+        initAgain(g, mode);
     }
 
-    dijkstra(g, includeNode, dest, 0);
-    std::vector<int> path2 = getPath(g, includeNode, dest, time, 0);
+    dijkstra(g, includeNode, dest, mode);
+    std::vector<int> path2 = getPath(g, includeNode, dest, time, mode);
 
     if (path2.empty()) {
         oss <<"none\n";
@@ -147,20 +150,21 @@ std::string DrivingWalking(Graph * g, const int &origin, const int &dest, const 
     const std::unordered_set<int> &avoidNodes, const std::vector<std::pair<int,int>> &avoidEdges) {
     std::ostringstream oss;
     oss << "Source:"<<origin << "\nDestination:" << dest << std::endl;
-
+    int walkMode = 1;
+    int driveMode = 0;
 
     // Mark the time needed to walk from parking spots to the destination, but just the ones with
     // the time below the maxWalkingTime allowed
-    initAvoid(g, avoidNodes, avoidEdges);
-    dijkstra(g, dest, -1, 1, maxWalkTime);
+    initAvoid(g, avoidNodes, avoidEdges, walkMode);
+    dijkstra(g, dest, -1, walkMode, maxWalkTime);
 
     // Get the better parking spot p
-    initAgain(g);
+    initAgain(g, driveMode);
     Vertex* park_spot = g->findVertex(origin);
-    dijkstra(g, origin, -1,0, maxWalkTime, &park_spot); // checks all vertexes
+    dijkstra(g, origin, -1,driveMode, maxWalkTime, &park_spot); // checks all vertexes
 
     // Is the parking spot viable
-    if (park_spot->getId()==origin || !park_spot->isPark() || park_spot->getWalkDist() > maxWalkTime) {
+    if (park_spot->getId()==origin || !park_spot->isPark() || park_spot->getDist(walkMode) > maxWalkTime) {
         //oss << "ParkingNode:\nWalkingRoute:\nTotalTime:\n";
 
         //get approximate solution
@@ -176,7 +180,7 @@ std::string DrivingWalking(Graph * g, const int &origin, const int &dest, const 
 
     //get driving route from origin to parking spot
     double time1 = 0;
-    std::vector<int> path1 = getPath(g, origin, park_spot->getId(), time1, 0);
+    std::vector<int> path1 = getPath(g, origin, park_spot->getId(), time1, driveMode);
     printPath(path1, oss);
     oss<<"("<<time1<<")\n";
     oss<<"ParkingNode:"<<path1.back()<<"\n";
@@ -184,7 +188,7 @@ std::string DrivingWalking(Graph * g, const int &origin, const int &dest, const 
 
     //get walking route from parking spot to destination
     double time2 = 0;
-    std::vector<int> path2 = getPath(g, dest, park_spot->getId(), time2, 1);
+    std::vector<int> path2 = getPath(g, dest, park_spot->getId(), time2, walkMode);
     std::reverse(path2.begin(), path2.end());
     printPath(path2, oss);
     oss<<"("<<time2<<")\n";
@@ -195,24 +199,24 @@ std::string DrivingWalking(Graph * g, const int &origin, const int &dest, const 
 
 //not working
 //second alternative wrong
+//nao inicializa dirito ainda!!!
 void DrivingWalkingAlternatives(Graph * g, const int &origin, const int &dest, std::ostringstream &oss) {
     //oss << "Source:"<<origin << "\nDestination:" << dest << std::endl;
 
+    int walkMode = 1;
     // Mark the time needed to walk from parking spots to the destination, but just the ones with
     // the time below the maxWalkingTime allowed
     for (auto v : g->getVertexSet()) {
-        v->setDist(INF);
-        v->setPath(nullptr);
+        v->setDist(INF, walkMode);
+        v->setPath(nullptr, walkMode);
         v->setVisited(false);
-        v->setWalkDist(INF);
-        v->setPath(nullptr);
     }
     dijkstra(g, dest, -1, 1, INF); // checks all vertexes
-
+    int driveMode = 0;
     // Get the better parking spot p
-    initAgain(g);
+    initAgain(g,driveMode );
     Vertex* park_spot = g->findVertex(origin);
-    dijkstra(g, origin, -1,0, INF, &park_spot);
+    dijkstra(g, origin, -1,driveMode, INF, &park_spot);
 
     if (park_spot->getId()==origin || !park_spot->isPark()) {
         std::cout<<"n deu :( \n";

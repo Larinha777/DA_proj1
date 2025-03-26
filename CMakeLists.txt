@@ -10,4 +10,8 @@ add_executable(DAProject1 main.cpp
         algorithms/Algorithms.cpp
         algorithms/Algorithms.h
         algorithms/util.cpp
-        algorithms/util.h)
+        algorithms/util.h
+        menu/menu.cpp
+        menu/menu.h
+        menu/tc.h
+)

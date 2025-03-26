@@ -49,7 +49,7 @@ std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &
  * @note Time Complexity: O(V + E * N) where, V is the number of vertex in the graph,
  * E is the number of edges and N is the number of edges to avoid.
  */
-void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std::vector<std::pair<int,int>> &avoidEdges);
+void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std::vector<std::pair<int,int>> &avoidEdges, int mode);
 
 /**
  * @brief Initializes the graph for the Dijkstra algorithm.
@@ -63,7 +63,7 @@ void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std:
  *
  * @note Time Complexity: O(V) where V is the number of vertexes in the graph.
  */
-void initAgain(Graph * g);
+void initAgain(Graph * g, int mode);
 
 /**
  * @brief  See if using this edge is a better way to reach vertex v. Set the predecessor

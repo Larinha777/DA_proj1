@@ -32,14 +32,10 @@ public:
 
     std::vector<Edge *> getAdj() const;
     bool isVisited() const;
-    double getDist() const;
-    Edge *getPath() const;
+    double getDist(int mode) const;
+    Edge *getPath(int mode) const;
     std::vector<Edge *> getIncoming() const;
-
-
     bool isAvoiding() const;
-    double getWalkDist() const;
-    Edge *getWalkPath() const;
 
     void setName(const std::string& newName);
     void setId(const int& newId);
@@ -47,12 +43,9 @@ public:
     void setPark(bool newPark);
 
     void setVisited(bool visited);
-    void setDist(double dist);
-    void setPath(Edge *path);
-
+    void setDist(double dist, int mode);
+    void setPath(Edge *path, int mode);
     void setAvoiding(bool avoid);
-    void setWalkDist(double dist);
-    void setWalkPath(Edge *path);
 
     Edge *addEdge(Vertex *dest, double walk, double drive);
 
@@ -70,10 +63,9 @@ protected:
     std::vector<Edge *> adj;
 
     // auxiliary fields
-    bool visited = false; // used by DFS, BFS, Prim ...
-    double dist = 0;
-    Edge *path = nullptr;
-
+    bool visited = false;
+    double driveDist = INF;
+    Edge *drivePath = nullptr;
     double walkDist = INF;
     Edge *walkPath = nullptr;
     bool avoid = false;

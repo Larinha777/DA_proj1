@@ -20,13 +20,7 @@ std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &
     std::vector<int> res;
     Vertex *v = g->findVertex(dest);
 
-    if (mode == 0) {
-        time += v->getDist();
-    } else if (mode == 1) {
-        time += v->getWalkDist();
-    } else {
-        return {};
-    }
+    time += v->getDist(mode);
 
     while (v->getId() != origin) {
 
@@ -36,16 +30,12 @@ std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &
         }
 
         res.push_back(v->getId());
-        if ( (mode == 0 && v->getPath() == nullptr) || (mode == 1 && v->getWalkPath() == nullptr) ) {
+        if ( v->getPath(mode) == nullptr) {
             time=-1;
             return {};
         }
 
-        if (mode == 0) {
-            v = v->getPath()->getOrig();
-        } else if (mode == 1) {
-            v = v->getWalkPath()->getOrig();
-        }
+        v = v->getPath(mode)->getOrig();
 
     }
     res.push_back(v->getId());
@@ -54,12 +44,10 @@ std::vector<int> getPath(Graph * g, const int &origin, const int &dest, double &
 }
 
 
-void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std::vector<std::pair<int,int>> &avoidEdges) {
+void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std::vector<std::pair<int,int>> &avoidEdges, int mode) {
     for (auto v : g->getVertexSet()) {
-        v->setDist(INF);
-        v->setPath(nullptr);
-        v->setWalkDist(INF);
-        v->setWalkPath(nullptr);
+        v->setDist(INF, mode);
+        v->setPath(nullptr, mode);
         v->setVisited(false);
         v->setAvoiding(avoidNodes.contains(v->getId()));
 
@@ -76,10 +64,10 @@ void initAvoid(Graph * g,  const std::unordered_set<int> &avoidNodes, const std:
 }
 
 
-void initAgain(Graph * g) {
+void initAgain(Graph * g, int mode) {
     for (auto v : g->getVertexSet()) {
-        v->setDist(INF);
-        v->setPath(nullptr);
+        v->setDist(INF, mode);
+        v->setPath(nullptr, mode);
         v->setVisited(false);
     }
 }
@@ -88,15 +76,9 @@ void initAgain(Graph * g) {
 bool relax(Edge *edge, const int mode) { // d[u] + w(u,v) < d[v]
     Vertex *u = edge->getOrig();
     Vertex *v = edge->getDest();
-    if (v->getDist() > u->getDist() + edge->getTime(mode)) {
-        v->setDist(u->getDist() + edge->getTime(mode));
-        v->setPath(edge);
-
-        if (mode == 1) {
-            v->setWalkPath(edge);
-            v->setWalkDist(v->getDist());
-        }
-
+    if (v->getDist(mode) > u->getDist(mode) + edge->getTime(mode)) {
+        v->setDist(u->getDist(mode) + edge->getTime(mode), mode);
+        v->setPath(edge, mode);
         return true;
     }
     return false;
@@ -104,24 +86,24 @@ bool relax(Edge *edge, const int mode) { // d[u] + w(u,v) < d[v]
 
 bool betterPark(Vertex *u, Vertex *v, double maxWalkTime) { //is u a better parking spot thant v?
     if (!u->isPark()) return false; // first time
-    if (v->getWalkDist() > maxWalkTime) {
-        if ( u->getWalkDist() > maxWalkTime ) {  //both vertexes exceed maxWalkingTime
-            if (u->getDist() + u->getWalkDist() == v->getDist() + v->getWalkDist()) { //same overall time
-                return u->getWalkDist() > v->getDist() + v->getWalkDist();
+    if (v->getDist(1) > maxWalkTime) {
+        if ( u->getDist(1) > maxWalkTime ) {  //both vertexes exceed maxWalkingTime
+            if (u->getDist(0) + u->getDist(1) == v->getDist(0) + v->getDist(1)) { //same overall time
+                return u->getDist(1) > v->getDist(0) + v->getDist(1);
             }
-            return (u->getDist() + u->getWalkDist() < v->getDist() + v->getWalkDist());
+            return (u->getDist(0) + u->getDist(1) < v->getDist(0) + v->getDist(1));
         }
         return true; // just v exceeds max walking time
     }
-    if (u->getWalkDist() > maxWalkTime) return false;    // Vertex u exceeds max time but v doesnt
+    if (u->getDist(1) > maxWalkTime) return false;    // Vertex u exceeds max time but v doesnt
 
 
-    if (u->getDist() + u->getWalkDist() == v->getDist() + v->getWalkDist()) {// if both have the same time, the one that walks more is better
-        return u->getWalkDist() > v->getDist() + v->getWalkDist();
+    if (u->getDist(0) + u->getDist(1) == v->getDist(0) + v->getDist(1)) {// if both have the same time, the one that walks more is better
+        return u->getDist(1) > v->getDist(0) + v->getDist(1);
     }
 
     // the one that that takes the least time is better
-    return (u->getDist() + u->getWalkDist() < v->getDist() + v->getWalkDist());
+    return (u->getDist(0) + u->getDist(1) < v->getDist(0) + v->getDist(1));
 }
 
 

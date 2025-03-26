@@ -21,8 +21,9 @@ class MutablePriorityQueue {
     void heapifyUp(unsigned i);
     void heapifyDown(unsigned i);
     inline void set(unsigned i, T * x);
+    int mode = 0;
 public:
-    MutablePriorityQueue();
+    MutablePriorityQueue(int mode);
     void insert(T * x);
     T * extractMin();
     void decreaseKey(T * x);
@@ -34,8 +35,9 @@ public:
 #define leftChild(i) ((i) * 2)
 
 template <class T>
-MutablePriorityQueue<T>::MutablePriorityQueue() {
+MutablePriorityQueue<T>::MutablePriorityQueue(int mode) {
     H.push_back(nullptr);
+    this->mode = mode;
     // indices will be used starting in 1
     // to facilitate parent/child calculations
 }

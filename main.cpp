@@ -1,8 +1,14 @@
 #include <iostream>
 #include "data_structures/Graph.h"
 #include "algorithms/Algorithms.h"
+#include "menu/menu.h"
+
 int main() {
-    Graph g = initialize("../data/loc.csv", "../data/dist.csv");
+
+    Menu menu;
+    menu.run();
+
+
 
     // Graph g = initialize("../data/extra_loc.csv", "../data/extra_dis.csv");
     // Graph g = initialize("../data/Locations.csv", "../data/Distances.csv");
@@ -19,9 +25,7 @@ int main() {
     WalkingRoute2:6,5(10)
     TotalTime2:31
  */
-
-    std::cout<<DrivingWalking(&g, 8, 5, 18, {}, {} )<<"\n";
-    std::cout<<DrivingWalking(&g, 8, 5, 5, {}, {} )<<"\n";
+    //std::cout<<RestrictedDriving(&g, 5, 4, {},{},7)<<"\n";
 
     /*
     std::cout<<SimpleDriving(&g, 3, 8 )<<"\n";
@@ -34,6 +38,8 @@ int main() {
 
 
     std::cout<<DrivingWalking(&g, 1, 8, 13, {}, {} )<<"\n";
+    std::cout<<DrivingWalking(&g, 8, 5, 18, {}, {} )<<"\n";
+    std::cout<<DrivingWalking(&g, 8, 5, 5, {}, {} )<<"\n";
 
     */
 

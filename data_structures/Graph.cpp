@@ -48,7 +48,7 @@ void Vertex::removeOutgoingEdges() {
 }
 
 bool Vertex::operator<(const Vertex &vertex) const {
-    return this->dist < vertex.dist;
+    return this->getDist(0) < vertex.getDist(0);
 }
 
 std::string Vertex::getName() const {
@@ -75,12 +75,26 @@ bool Vertex::isVisited() const {
     return this->visited;
 }
 
-double Vertex::getDist() const {
-    return this->dist;
+double Vertex::getDist(const int mode) const {
+    switch (mode) {
+        case 0:
+            return this->driveDist;
+        case 1:
+            return this->walkDist;
+        default:
+            return INF;
+    }
 }
 
-Edge *Vertex::getPath() const {
-    return this->path;
+Edge *Vertex::getPath(int mode) const {
+    switch (mode) {
+        case 0:
+            return this->drivePath;
+        case 1:
+            return this->walkPath;
+        default:
+            return nullptr;
+    }
 }
 
 std::vector<Edge *> Vertex::getIncoming() const {
@@ -89,13 +103,6 @@ std::vector<Edge *> Vertex::getIncoming() const {
 
 bool Vertex::isAvoiding() const{
     return this->avoid;
-}
-
-double Vertex::getWalkDist() const {
-    return walkDist;
-}
-Edge *Vertex::getWalkPath() const {
-    return walkPath;
 }
 
 void Vertex::setName(const std::string& newName) {this->name = newName;}
@@ -110,12 +117,25 @@ void Vertex::setAvoiding(bool avoid) {
     this->avoid = avoid;
 }
 
-void Vertex::setDist(double dist) {
-    this->dist = dist;
+void Vertex::setDist(const double dist, const int mode) {
+    switch (mode) {
+        case 0:
+            this->driveDist = dist;
+            break;
+        case 1:
+            this->walkDist = dist;
+    }
 }
 
-void Vertex::setPath(Edge *path) {
-    this->path = path;
+void Vertex::setPath(Edge *path, int mode) {
+    switch (mode) {
+        case 0:
+            this->drivePath = path;
+        break;
+        case 1:
+            this->walkPath = path;
+        break;
+    }
 }
 
 void Vertex::deleteEdge(const Edge *edge) const {
@@ -133,14 +153,6 @@ void Vertex::deleteEdge(const Edge *edge) const {
     delete edge;
 }
 
-
-
-void Vertex::setWalkDist(double dist) {
-    this->walkDist = dist;
-}
-void Vertex::setWalkPath(Edge *path) {
-    this->walkPath = path;
-}
 
 /********************** Edge  ****************************/
 
@@ -331,10 +343,24 @@ Graph initialize(const std::string &locs, const std::string &dists) {
     std::string line;
 
     std::ifstream locFile(locs);
+    std::ifstream distFile(dists);
+
+    if (!locFile.is_open() && !distFile.is_open()) {
+        throw std::runtime_error("Could not open files: " + locs + " and " + dists);
+    }
+    if (!locFile.is_open()) {
+        throw std::runtime_error("Failed to open locations file: " + locs);
+    }
+    if (!distFile.is_open()) {
+        throw std::runtime_error("Failed to open distances file: " + dists);
+    }
+    /*
+    std::ifstream locFile(locs);
     if (!locFile.is_open()) {
         std::cout << "Error opening locations file: " << locs << std::endl;
         return g;
     }
+    */
     std::getline(locFile, line); // Skip header line
     while (std::getline(locFile, line)) {
         if (line.empty())
@@ -351,12 +377,13 @@ Graph initialize(const std::string &locs, const std::string &dists) {
         }
     }
     locFile.close();
-
+    /*
     std::ifstream distFile(dists);
     if (!distFile.is_open()) {
         std::cout << "Error opening distances file: " << dists << std::endl;
         return g;
     }
+    */
     std::getline(distFile, line); // Skip header line
     while (std::getline(distFile, line)) {
         if (line.empty())

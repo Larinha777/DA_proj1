@@ -354,13 +354,7 @@ Graph initialize(const std::string &locs, const std::string &dists) {
     if (!distFile.is_open()) {
         throw std::runtime_error("Failed to open distances file: " + dists);
     }
-    /*
-    std::ifstream locFile(locs);
-    if (!locFile.is_open()) {
-        std::cout << "Error opening locations file: " << locs << std::endl;
-        return g;
-    }
-    */
+
     std::getline(locFile, line); // Skip header line
     while (std::getline(locFile, line)) {
         if (line.empty())
@@ -377,13 +371,7 @@ Graph initialize(const std::string &locs, const std::string &dists) {
         }
     }
     locFile.close();
-    /*
-    std::ifstream distFile(dists);
-    if (!distFile.is_open()) {
-        std::cout << "Error opening distances file: " << dists << std::endl;
-        return g;
-    }
-    */
+
     std::getline(distFile, line); // Skip header line
     while (std::getline(distFile, line)) {
         if (line.empty())

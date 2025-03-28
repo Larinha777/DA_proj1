@@ -1,7 +1,3 @@
-//
-// Created by Vasco Lemos on 06/03/2025.
-//
-
 #include "Graph.h"
 #include <fstream>
 #include <sstream>
@@ -173,16 +169,6 @@ Vertex *Edge::getOrig() const {
 Edge *Edge::getReverse() const {
     return this->reverse;
 }
-/*
-
-bool Edge::isSelected() const {
-    return this->selected;
-}
-
-void Edge::setSelected(bool selected) {
-    this->selected = selected;
-}
-*/
 
 void Edge::setReverse(Edge *reverse) {
     this->reverse = reverse;

@@ -85,22 +85,23 @@ bool relax(Edge *edge, int mode);
 
 /**
  * @brief Compares two vertexes and chooses the one that is a better option to park on.
- * Called by Dijkstra Algorithm. v is always a parking node.
+ * Vertex v is always a parking node.
  *
- * @details The first time it is called u is the origin node, and as it cannot be a parking
- * spot, v is always the better option.
- * If the time needed to walk from one of the nodes to the destination (WalkTime) exceeds the
- * maxWalkingTime, while the other doesn't, the one that does not is the better parking spot.
- * If the walkTime of both exceeds the maxWalkingTime or none of them do, the one that takes
- * less time overall (walkTime + dist (driving time from origin to that node)) is the better
- * parking spot. Should they have the same overall minimum travel time, the one with
- * the longest walkTime is the better option.
-
+ * @details If the time needed to walk from v to the destination (walkDist) exceeds the
+ * maxWalkingTime, v is not a valid parking spot and can be discarded.
+ * If v is a valid parking spot, and it is the first vertex to be so, u will still be the origin
+ * node, and as it cannot be a parking spot, v is always the better option.
+ *
+ * Now that only leaves us on the cases where both vertexes are valid parking spots.
+ * The one that takes less time overall (driveDist (driving time from origin to that node) + walkDist(walking
+ * time from that node to the destination)) is the better parking spot. Should they have the same overall
+ * minimum travel time, the one with the longest walkTime is the better option.
+ *
  * @param u pointer to vertex u
  * @param v pointer to vertex v
  * @param maxWalkTime double with maximum time allowed to be walking by the algorithm
  *
- * @return boolean that is true if u is the better choice and false if it is v.
+ * @return boolean that returns true if v is an invalid parking spot of if u is the better choice. False otherwise
  *
  * @note Time Complexity: O(1).
  */

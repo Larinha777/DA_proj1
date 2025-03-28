@@ -1,5 +1,4 @@
-// Original code by Gonçalo Leão
-// Updated by DA 2024/2025 Team
+// Original code by Gonçalo Leão and the DA 2024/2025 Team
 
 #ifndef DA_TP_CLASSES_GRAPH
 #define DA_TP_CLASSES_GRAPH
@@ -319,6 +318,8 @@ public:
      *
      * @param time The time to be set.
      * @param mode The mode of travel (e.g., 0 for driving, 1 for walking).
+     *
+     * @note Possible to later add other modes, e.g.: bike
      */
     void setTime (double time, int mode);
 

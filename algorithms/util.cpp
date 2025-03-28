@@ -2,8 +2,6 @@
 
 #include <algorithm>
 
-#include "Algorithms.h"
-
 
 void printPath(const std::vector<int> &v, std::ostringstream &oss) {
     if (v.empty()) {
@@ -84,22 +82,17 @@ bool relax(Edge *edge, const int mode) { // d[u] + w(u,v) < d[v]
     return false;
 }
 
+
 bool betterPark(Vertex *u, Vertex *v, double maxWalkTime) { //is u a better parking spot thant v?
-    if (!u->isPark()) return false; // first time
-    if (v->getDist(1) > maxWalkTime) {
-        if ( u->getDist(1) > maxWalkTime ) {  //both vertexes exceed maxWalkingTime
-            if (u->getDist(0) + u->getDist(1) == v->getDist(0) + v->getDist(1)) { //same overall time
-                return u->getDist(1) > v->getDist(0) + v->getDist(1);
-            }
-            return (u->getDist(0) + u->getDist(1) < v->getDist(0) + v->getDist(1));
-        }
-        return true; // just v exceeds max walking time
+    if (v->getDist(1) > maxWalkTime) {  // v is not a valid parking spot because it exceeds max walking time
+        return true;
     }
-    if (u->getDist(1) > maxWalkTime) return false;    // Vertex u exceeds max time but v doesnt
+    if (!u->isPark()) {// Vertex u exceeds max time but v doesnt
+        return false;
+    }
 
-
-    if (u->getDist(0) + u->getDist(1) == v->getDist(0) + v->getDist(1)) {// if both have the same time, the one that walks more is better
-        return u->getDist(1) > v->getDist(0) + v->getDist(1);
+    if (u->getDist(0) + u->getDist(1) == v->getDist(0) + v->getDist(1)) {// if both have the same time
+        return u->getDist(1) > v->getDist(0) + v->getDist(1); //the one that walks more is the better choice
     }
 
     // the one that that takes the least time is better

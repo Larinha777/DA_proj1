@@ -2,7 +2,6 @@
 #define MENU_H
 
 #include <vector>
-
 #include <string>
 
 #include "../data_structures/Graph.h"
@@ -10,36 +9,31 @@
 class Menu {
 private:
     int selectedItemIndex;
-    bool dataLoaded;
-    std::vector<std::string> items;
     std::string currentColor;
     Graph graph;
+    std::vector<std::string> items;
 
 public:
+
     Menu();
     void run();
-    void displayMenu();
-
+    void displayMenu() const;
     void navigateMenu();
     void handleSelection();
+
+    //Batch
+    void batchProcess();
+    void askForRouteDetailsDriving();
+    void askForRouteDetailsDW();
+
+    void processArrowKeyInput(int& index, int maxIndex) const;
 
     //Options
     void optionsMenu();
     void handleOptionsSelection(int index);
     void changeDataSet();
     void changeTextColor();
-    void displayHelp();
-    void runTests();
-
-    //Batch
-    void batchProcess();
-
-    //Aux
-    void processArrowKeyInput(int& index, int maxIndex);
-    void askForRouteDetails();
-    static std::string getCityFromUser(const std::string& prompt);
-
-
+    void displayHelp() const;
 };
 
 #endif //MENU_H

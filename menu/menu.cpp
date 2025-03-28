@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <stdexcept>
 
 #include <unistd.h>
 
@@ -15,7 +16,7 @@ using namespace std;
 
 //Menu
 
-Menu::Menu() : selectedItemIndex(0), dataLoaded(false), currentColor(TC_MAG),
+Menu::Menu() : selectedItemIndex(0), currentColor(TC_MAG),
     graph(initialize("../data/loc.csv", "../data/dist.csv")),
     items({
         "1. Plan Route",
@@ -25,7 +26,7 @@ Menu::Menu() : selectedItemIndex(0), dataLoaded(false), currentColor(TC_MAG),
         "0. Exit"
     }) {}
 
-void Menu::displayMenu() {
+void Menu::displayMenu() const {
     tc_clear_screen();
     cout << "================= Route Planning Tool =================\n";
     for (int i = 0; i < items.size(); ++i) {
@@ -77,9 +78,10 @@ void Menu::navigateMenu() {
 void Menu::handleSelection() {
     switch (selectedItemIndex) {
         case 0:
-            askForRouteDetails();
+            askForRouteDetailsDriving();
             break;
         case 1:
+            askForRouteDetailsDW();
             break;
         case 2:
             batchProcess();
@@ -97,7 +99,7 @@ void Menu::handleSelection() {
 
 //Auxiliary Functions
 
-void Menu::processArrowKeyInput(int& index, int maxIndex) {
+void Menu::processArrowKeyInput(int& index, int maxIndex) const {
     getchar(); // Skip the '[' character
     switch (getchar()) {
         case 'A': // Arrow up
@@ -112,17 +114,75 @@ void Menu::processArrowKeyInput(int& index, int maxIndex) {
     displayMenu();
 }
 
-string Menu::getCityFromUser(const string& prompt) {
+string getInfoFromUser(const string& prompt) {
     string city;
     cout << prompt << endl;
     getline(cin, city);
     return city;
 }
 
+unordered_set<int> parseNodeIds(const string& input) {
+    unordered_set<int> nodeIds;
+    stringstream ss(input);
+    string nodeId;
+    while (getline(ss, nodeId, ',')) {
+        try {
+            nodeIds.insert(stoi(nodeId));
+        } catch (const std::invalid_argument& e) {
+            cerr << "ERROR: Invalid node ID '" << nodeId << "' skipped." << endl;
+        } catch (const std::out_of_range& e) {
+            cerr << "ERROR: Node ID out of range '" << nodeId << "' skipped." << endl;
+        }
+    }
+    return nodeIds;
+}
+
+vector<pair<int, int>> parseSegmentPairs(const string& input) {
+    vector<pair<int, int>> avoidEdges;
+    // Ensure the input is not empty and has the expected format before proceeding
+    if (input.empty()) return avoidEdges;
+
+    // Prepare the input string by removing the outer parentheses
+    string segmentPairs = input.substr(1, input.length() - 2);
+
+    // Use a stream to parse each segment defined by commas
+    istringstream segmentStream(segmentPairs);
+    string segment;
+
+    // Process each segment
+    while (getline(segmentStream, segment, ',')) {
+        // Ensure the segment starts as expected with '(' and remove it
+        if (segment.front() == '(') {
+            segment = segment.substr(1);  // Remove the '('
+        }
+
+        int first = stoi(segment);
+
+        // Find the position of the comma separating the two numbers
+        size_t commaPos = segment.find(',');
+
+        getline(segmentStream, segment, ')');
+        int second = stoi(segment);
+
+        avoidEdges.emplace_back(first, second);
+
+        // If the next character in the stream is a comma, move past it
+        if (segmentStream.peek() == ',') segmentStream.get(); // This handles the delimiter after each pair
+    }
+    return avoidEdges;
+}
+
+bool isParkingNode(const Graph& graph, int nodeId) {
+    Vertex* v = graph.findVertex(nodeId);
+    return v != nullptr && v->isPark();
+}
+
+//Main Functions
+
 void Menu::batchProcess() {
     tc_clear_screen();
 
-    ifstream inputFile("../batch/input8.txt");
+    ifstream inputFile("../batch/input.txt");
     ofstream outputFile("../batch/output.txt");
 
     if (!inputFile.is_open() || !outputFile.is_open()) {
@@ -132,135 +192,231 @@ void Menu::batchProcess() {
 
     string line, mode, temp;
     int source, destination;
-    unordered_set<int> avoidNodes;
-    vector<std::pair<int, int>> avoidEdges;
-    int includeNode = -1; // Default initialization when not specified
 
     // Read the first line for mode
     getline(inputFile, line);
-    istringstream modeStream(line);
-    getline(modeStream, temp, ':'); // Skip "Mode"
-    getline(modeStream, mode); // Read actual mode
+    mode = line.substr(line.find(':') + 1);
 
     // Read the second line for source
     getline(inputFile, line);
-    istringstream sourceStream(line);
-    getline(sourceStream, temp, ':'); // Skip "Source"
-    sourceStream >> source; // Read actual source
+    source = stoi(line.substr(line.find(':') + 1));
 
     // Read the third line for destination
     getline(inputFile, line);
-    istringstream destStream(line);
-    getline(destStream, temp, ':'); // Skip "Destination"
-    destStream >> destination; // Read actual destination
+    destination = stoi(line.substr(line.find(':') + 1));
+
+
+    unordered_set<int> avoidNodes;
+    vector<std::pair<int, int>> avoidEdges;
+    int includeNode = -1;
+    int maxWalkTime = 0;
+
 
     // Read optional parameters if present
     while (getline(inputFile, line)) {
         if (line.find("AvoidNodes:") != string::npos) {
-            istringstream nodeStream(line.substr(line.find(':') + 1));
-            string node;
-            while (getline(nodeStream, node, ',')) {
-                if (!node.empty()) {
-                    avoidNodes.insert(stoi(node));
-                }
-            }
+            avoidNodes = parseNodeIds(line.substr(line.find(':') + 1));
         } else if (line.find("AvoidSegments:") != string::npos) {
-            string segmentPairs = line.substr(line.find(':') + 1);
-            segmentPairs = segmentPairs.substr(1, segmentPairs.length() - 2);  // Remove the first '(' and last ')'
-
-            istringstream segmentStream(segmentPairs);
-            string segment;
-
-            // First, extract the string until the first comma, which is part of the pair (first,second),
-            // then use ')' as a delimiter to close each segment pair.
-            while (getline(segmentStream, segment, ',')) {
-                // Strip any potential leading '(' from the line
-                if (segment.front() == '(') {
-                    segment = segment.substr(1);
-                }
-
-                int first = stoi(segment);  // Convert the first part of the pair to an integer
-
-                // Now read until the next ')' to get the second part of the pair
-                getline(segmentStream, segment, ')');
-                int second = stoi(segment);  // Convert the second part of the pair to an integer
-
-                avoidEdges.emplace_back(first, second);
-
-                // Skip the next ',' which comes after ')' in patterns like (3,4),
-                segmentStream.get();  // This consumes the ',' delimiter after each pair except the last one
-            }
+            avoidEdges = parseSegmentPairs(line.substr(line.find(':') + 1));
         } else if (line.find("IncludeNode:") != string::npos) {
             istringstream includeStream(line.substr(line.find(':') + 1));
             includeStream >> includeNode;
+        } else if (line.find("MaxWalkTime:") != string::npos) {
+            istringstream includeStream(line.substr(line.find(':') + 1));
+            includeStream >> maxWalkTime;
         }
     }
 
     if (includeNode == -1) {includeNode= source;}
 
     // Now that all data is parsed, perform the appropriate routing function based on the mode
-
-    // Variable to hold the output of routing functions
     std::string routeDetails;
-
     if (mode == "driving" && avoidNodes.empty() && avoidEdges.empty()) {
         routeDetails = SimpleDriving(&graph, source, destination);
     } else if (mode == "driving") {
         routeDetails = RestrictedDriving(&graph, source, destination, avoidNodes, avoidEdges, includeNode);
     } else if (mode == "driving-walking") {
-        // routeDetails = DrivingWalking(&graph, source, destination, avoidNodes, avoidEdges, includeNode);
+        routeDetails = DrivingWalking(&graph, source, destination, maxWalkTime, avoidNodes, avoidEdges);
     }
-
 
     // Write the routing details to the output file
     outputFile << routeDetails << endl;
-
     /*
+    //Debug avoidEdges parsing
     for (const auto& pair : avoidEdges) {
-        outputFile << "(" << pair.first << "," << pair.second << ")" << std::endl;
+        outputFile << "(" << pair.first << "," << pair.second << ")" << "\n";
     }
     */
 
-    // Close files
     inputFile.close();
     outputFile.close();
-
     cout << TC_GRN <<"Batch processing completed." << TC_NRM << endl;
     sleep(1);
-
     displayMenu();
 }
 
-
-//SubMenus
-
-void Menu::askForRouteDetails() {
+void Menu::askForRouteDetailsDriving() {
     tc_clear_screen();
     show_cursor();
     disable_raw_mode();
 
-    string source = getCityFromUser("Enter the start city:");
-    tc_clear_screen();
+    try {
+        string sourceStr = getInfoFromUser("Enter the start city ID:");
+        int source = stoi(sourceStr);
 
-    string destination = getCityFromUser("Enter the destination city:");
-    tc_clear_screen();
+        string destinationStr = getInfoFromUser("\nEnter the destination city ID:");
+        int destination = stoi(destinationStr);
 
-    string includeNode = getCityFromUser("Enter a city(s) to route through (optional, press enter to skip):");
-    tc_clear_screen();
+        string avoidNodesStr = getInfoFromUser("\nEnter city IDs to avoid (optional, press enter to skip):");
+        unordered_set<int> avoidNodes = parseNodeIds(avoidNodesStr);
 
-    string avoidNodes = getCityFromUser("Enter a city(s) to avoid (optional, press enter to skip):");
-    tc_clear_screen();
+        string avoidSegmentsStr = getInfoFromUser("\nEnter segments to avoid (optional, format (x,y),(a,b),etc.):");
+        vector<pair<int, int>> avoidEdges = parseSegmentPairs(avoidSegmentsStr);
 
-    string avoidSegments = getCityFromUser("Enter a segment(s) to avoid (optional, press enter to skip):");
-    hide_cursor();
+        string includeNodeStr = getInfoFromUser("\nEnter a city ID to route through (optional, press enter to skip):");
+        int includeNode = includeNodeStr.empty() ? source : stoi(includeNodeStr);
 
+        hide_cursor();
 
+        string routeDetails;
+        if (avoidNodes.empty() && avoidEdges.empty()) {
+            routeDetails = SimpleDriving(&graph, source, destination);
+        } else {
+            routeDetails = RestrictedDriving(&graph, source, destination, avoidNodes, avoidEdges, includeNode);
+        }
 
-    cout << "Calculated route: " << endl;
-    cout << "Press enter to return to the menu..." << endl;
+        tc_clear_screen();
+        cout << routeDetails << endl;
+
+        cout << "Press enter to return to the menu..." <<endl;
+        getchar();
+
+    } catch (const std::invalid_argument& e) {
+        hide_cursor();
+        cout << TC_RED << "Invalid input. Please enter values with correct format." << TC_NRM << endl;
+        getchar();
+    }catch (const std::out_of_range& e) {
+        hide_cursor();
+        cout << TC_RED << "Input out of range. Ensure numbers are within the valid range." << TC_NRM << endl;
+        getchar();
+    }
 
     enable_raw_mode();
     displayMenu();
+}
+
+void Menu::askForRouteDetailsDW() {
+    tc_clear_screen();
+    show_cursor();
+    disable_raw_mode();
+
+    try {
+        string sourceStr = getInfoFromUser("Enter the start city ID:");
+        int source = stoi(sourceStr);
+
+        string destinationStr = getInfoFromUser("\nEnter the destination city ID:");
+        int destination = stoi(destinationStr);
+
+        // Check if source and destination are the same or designated as parking nodes
+        if (source == destination){
+            throw runtime_error("Source and destination cannot be the same.");
+        }else if (isParkingNode(graph, source) || isParkingNode(graph, destination)) {
+            throw runtime_error("Neither the source nor the destination can be parking spots.");
+        }
+
+        string maxWalkTimeStr = getInfoFromUser("\nEnter the Max Walk Time:");
+        int maxWalkTime = stoi(maxWalkTimeStr);
+
+        string avoidNodesStr = getInfoFromUser("\nEnter city IDs to avoid (optional, press enter to skip):");
+        unordered_set<int> avoidNodes = parseNodeIds(avoidNodesStr);
+
+        string avoidSegmentsStr = getInfoFromUser("\nEnter segments to avoid (optional, format (x,y),(a,b),etc.):");
+        vector<pair<int, int>> avoidEdges = parseSegmentPairs(avoidSegmentsStr);
+
+        hide_cursor();
+
+        string routeDetails = DrivingWalking(&graph, source, destination, maxWalkTime, avoidNodes, avoidEdges);
+        tc_clear_screen();
+        cout << routeDetails << endl;
+
+        cout << "Press enter to return to the menu..." <<endl;
+        getchar();
+
+    } catch (const std::invalid_argument& e) {
+        hide_cursor();
+        cout << TC_RED << "Invalid input. Please enter values with correct format." << TC_NRM << endl;
+        getchar();
+
+    } catch (const std::out_of_range& e) {
+        hide_cursor();
+        cout << TC_RED << "Input out of range. Please enter smaller numbers." << TC_NRM << endl;
+        getchar();
+
+    }catch (const std::runtime_error& e) {
+        hide_cursor();
+        cout << TC_RED << e.what() << TC_NRM << endl;
+        getchar();
+    }
+
+    enable_raw_mode();
+    displayMenu();
+}
+
+// Optional (Menu experience enhancers)
+
+void Menu::optionsMenu() {
+    vector<string> optionsItems = {
+        "1. Change Data Set",
+        "2. Change Text Color",
+        "3. Help",
+        "0. Return to Menu"
+    };
+
+    int optionsIndex = 0;
+    bool optionsRunning = true;
+
+    while (optionsRunning) {
+        tc_clear_screen();
+        cout << "================= Options =================\n";
+        for (int i = 0; i < optionsItems.size(); ++i) {
+            if (i == optionsIndex)
+                cout << currentColor << optionsItems[i] << TC_NRM << endl;
+            else
+                cout << optionsItems[i] << endl;
+        }
+
+        switch (getchar()) {
+            case '0':
+                optionsRunning = false;
+                break;
+            case '\033': // Handle arrow keys
+                processArrowKeyInput(optionsIndex, optionsItems.size());
+                break;
+            case '\n':// Enter key
+                if (optionsIndex == 3) {optionsRunning = false;}
+                handleOptionsSelection(optionsIndex);
+                break;
+            default:
+                break;
+        }
+    }
+    displayMenu();
+}
+
+void Menu::handleOptionsSelection(int index) {
+    switch (index) {
+        case 0:
+            changeDataSet();
+            break;
+        case 1:
+            changeTextColor();
+            break;
+        case 2:
+            displayHelp();
+            break;
+        default:
+            break;
+    }
 }
 
 void Menu::changeTextColor() {
@@ -278,8 +434,7 @@ void Menu::changeTextColor() {
             }
         }
 
-        char c = getchar();
-        switch (c) {
+        switch (getchar()) {
             case '\033': // ESC sequence for arrow keys
                 processArrowKeyInput(colorChoice, colorOptions.size());
                 break;
@@ -311,6 +466,8 @@ void Menu::changeTextColor() {
                 }
                 displayMenu();
                 return;
+            default:
+                break;
         }
     }
 }
@@ -331,8 +488,8 @@ void Menu::changeDataSet(){
             }
         }
 
-        char c = getchar();
-        switch (c) {
+
+        switch (getchar()) {
             case '\033': // ESC sequence for arrow keys
                 processArrowKeyInput(choice, dataOptions.size());
                 break;
@@ -340,7 +497,7 @@ void Menu::changeDataSet(){
                 switch (choice) {
                     case 0:
                         try {
-                            graph = initialize("../data/loc.csv", "../data/dist.csv");
+                            graph= initialize("../data/Locations.csv", "../data/Distances.csv");
                             cout << endl << TC_GRN << "Dataset loaded successfully." << TC_NRM << endl;
                             sleep(1);
                         }catch (exception& e) {
@@ -351,7 +508,7 @@ void Menu::changeDataSet(){
                         break;
                     case 1:
                         try{
-                            graph= initialize("../data/Locations.csv", "../data/Distances.csv");
+                            graph = initialize("../data/loc.csv", "../data/dist.csv");
                             cout << endl << TC_GRN << "Dataset loaded successfully." << TC_NRM << endl;
                             sleep(1);
                         }catch (exception& e) {
@@ -365,8 +522,8 @@ void Menu::changeDataSet(){
                         show_cursor();
                         disable_raw_mode();
 
-                        locFile = getCityFromUser("File path Vertices:");
-                        distFile = getCityFromUser("File path Edges:");
+                        locFile = getInfoFromUser("File path Vertices:");
+                        distFile = getInfoFromUser("File path Edges:");
 
                         enable_raw_mode();
                         hide_cursor();
@@ -396,120 +553,84 @@ void Menu::changeDataSet(){
     }
 }
 
-void Menu::optionsMenu() {
-    vector<string> optionsItems = {
-        "1. Change Data Set",
-        "2. Change Text Color",
-        "3. Help",
-        "4. Run Tests",
-        "0. Return to Menu"
+void Menu::displayHelp() const {
+    vector<string> helpPages = {
+        // Page 1: Plan Route
+        R"(================================ Help Menu ================================
+1. Plan Route
+   Description: Calculates the fastest driving route between two cities.
+   Required: Start City ID, Destination City ID
+   Optional:
+     - AvoidNodes: Comma-separated list of City IDs to avoid
+     - AvoidSegments: List of edges in format (x,y),(a,b), etc.
+           Example: AvoidSegments: (2,3),(4,5)
+     - IncludeNode: City ID that must be passed through)",
+
+        // Page 2: Plan Green Route
+        R"(================================ Help Menu ================================
+2. Plan Green Route
+   Description: Calculates a greener route by combining driving and walking.
+   Required: Start City ID, Destination City ID, Max Walk Time (in minutes)
+   Optional:
+     - AvoidNodes: Comma-separated list of City IDs to avoid
+     - AvoidSegments: (x,y),(a,b), etc.)",
+
+        // Page 3: Batch Mode
+        R"(================================ Help Menu ================================
+3. Batch Mode
+   Description: Processes a routing task from a text file input.
+   File Format (input.txt):
+     Mode:driving OR Mode:driving-walking
+     Source:<ID>
+     Destination:<ID>
+     MaxWalkTime:<minutes> (only for driving-walking)
+     AvoidNodes:1,3,7
+     AvoidSegments:(2,3),(4,5)
+     IncludeNode:<ID>
+   Output is written to: output.txt)",
+
+        // Page 4: Options, Exit, Tips
+        R"(================================ Help Menu ================================
+4. Options
+   - Change Data Set: Load different datasets for routing.
+   - Change Text Color: Customize the console text color.
+
+5. Exit
+   - Closes the application.
+
+General Tips:
+   - Use arrow keys or number keys to navigate.
+   - Press Enter to select a menu option.
+   - Input must be numeric IDs. Format errors are handled.)"
     };
 
-    int optionsIndex = 0;
-    bool optionsRunning = true;
+    int currentPage = 0;
+    const int totalPages = helpPages.size();
 
-    while (optionsRunning) {
+    while (true) {
         tc_clear_screen();
-        cout << "================= Options =================\n";
-        for (int i = 0; i < optionsItems.size(); ++i) {
-            if (i == optionsIndex)
-                cout << currentColor << optionsItems[i] << TC_NRM << endl;
-            else
-                cout << optionsItems[i] << endl;
-        }
+        cout << helpPages[currentPage] << "\n";
+        cout << "\n< Page " << currentPage + 1 << "/" << totalPages << " >" <<" | q to exit";
 
-        char c = getchar();
-        switch (c) {
-            case '0':
-                optionsRunning = false;
+        switch (getchar()) {
+            case 'q':
+                return; // Exit
+            case '\033': {
+                getchar();
+                switch (getchar()) {
+                    case 'C': // Right arrow
+                        if (currentPage < totalPages - 1) currentPage++;
+                        break;
+                    case 'D': // Left arrow
+                        if (currentPage > 0) currentPage--;
+                        break;
+                    default:
+                        break;
+                }
                 break;
-            case '\033': // Handle arrow keys
-                processArrowKeyInput(optionsIndex, optionsItems.size());
-                break;
-            case '\n':// Enter key
-                if (optionsIndex == 4) {optionsRunning = false;}
-                handleOptionsSelection(optionsIndex);
-                break;
+            }
             default:
                 break;
         }
     }
-    displayMenu();
 }
-
-void Menu::handleOptionsSelection(int index) {
-    switch (index) {
-        case 0:
-            changeDataSet();
-            break;
-        case 1:
-            changeTextColor();
-            break;
-        case 2:
-            displayHelp();
-            break;
-        case 3:
-            runTests();
-            break;
-        case 4:
-            break;
-        default:
-            break;
-    }
-}
-
-void Menu::displayHelp() {
-    tc_clear_screen();
-    cout << "============================== Help Menu ==============================\n";
-    cout << "\nAvailable Commands:\n";
-
-    // Details for 'Plan Route'
-    cout << "1. Plan Route\n";
-    cout << "   Usage: Select 'Plan Route' from the main menu to start route planning.\n";
-    cout << "   Description: Calculates the fastest route between two points.\n";
-    cout << "   Format: Provide city IDs for the start and destination cities, and optionally specify segments to avoid.\n";
-    cout << "   Example: Start City ID: 1, Destination City ID: 5, Avoid Segments: (2,3),(4,5)\n";
-
-    // Details for 'Plan Green Route'
-    cout << "\n2. Plan Green Route\n";
-    cout << "   Usage: Select 'Plan Green Route' to calculate an environmentally friendly route that combines driving and walking.\n";
-    cout << "   Description: Calculates routes that minimize driving and maximize walking, according to user preference.\n";
-    cout << "   Format: In addition to city IDs, specify how much you are willing to walk.\n";
-    cout << "   Example: Start City ID: 1, Destination City ID: 5, Max Walking Time: 20 minutes\n";
-
-    // Details for 'Batch Mode'
-    cout << "\n3. Batch Mode\n";
-    cout << "   Usage: Select 'Batch Mode' to process routing requests from a file (input.txt) and write results in a file (output.txt).\n";
-    cout << "   Description: Automates the processing of multiple routes using predefined input and output formats.\n";
-
-    // Details for 'Options'
-    cout << "\n4. Options\n";
-    cout << "   - Change Data Set: Load different datasets for routing.\n";
-    cout << "   - Change Text Color: Customize the color of the text in the console.\n";
-    cout << "   - Run Tests: Execute predefined tests to check system functionality.(at the moment it is not implemented) \n";
-
-    // Exit command
-    cout << "\n5. Exit\n";
-    cout << "   Usage: Exit the application.\n";
-
-    // General tips
-    cout << "\nGeneral Tips:\n";
-    cout << "   - Use the arrow keys to navigate through the menu options.\n";
-    cout << "   - You can also use number keys to navigate through the menu options.\n";
-    cout << "   - Press Enter to select an option.\n";
-    cout << "\nPress any key to return to the main menu...";
-
-    getchar();
-    displayMenu();
-}
-
-void Menu::runTests() {
-    tc_clear_screen();
-    cout << "Running system tests..." << endl << endl;
-    sleep(2); // Simulate time taken to run tests
-    cout << TC_GRN << "Tests completed successfully." << TC_NRM << endl;
-    sleep(2);
-    optionsMenu();
-}
-
-//HELP

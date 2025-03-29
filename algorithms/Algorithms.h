@@ -11,7 +11,7 @@
  * @brief  Computes the shortest path based on the Dijkstra's Algorithm
  *
  * @details This function computes the shortest path between an origin and destiny node, using the Dijkstra's Algorithm.
- *  It supports different modes of transportation (0->driving, 1->walking), and if driving and maxWalktime != -1, it also
+ *  It supports different modes of transportation (0->driving, 1->walking), and if driving and maxWalkTime != -1, it also
  *  returns the best node to park the car to continue the rest of the route on foot.
  *
  * @param g A pointer to the graph that has the origin and destination Vertex.
@@ -24,7 +24,7 @@
  *
  * @note Time Complexity: O((V+E)logV) where V and E are the number of vertexes and edges respectively.
  */
-void dijkstra(Graph * g, const int &origin, const int &dest, int mode, double maxWalkTime = -1, Vertex **u = nullptr);
+void dijkstra(const Graph * g, const int &origin, const int &dest, int mode, double maxWalkTime = -1, Vertex **u = nullptr);
 
 
 

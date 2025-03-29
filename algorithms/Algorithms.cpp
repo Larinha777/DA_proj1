@@ -2,7 +2,7 @@
 
 
 
-void dijkstra(Graph * g, const int &origin, const int &dest, const int mode, const double maxWalkTime, Vertex **u) {
+void dijkstra(const Graph * g, const int &origin, const int &dest, const int mode, const double maxWalkTime, Vertex **u) {
 
     //graph is already initialized to perform this algorithm
 

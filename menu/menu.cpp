@@ -5,7 +5,9 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+
 #include <stdexcept>
+#include <regex>
 
 #include <unistd.h>
 
@@ -13,6 +15,8 @@
 #include <unordered_set>
 
 using namespace std;
+
+// TODO: Split Menu.cpp into multiple files (MenuInput.cpp, MenuBatch.cpp, etc.) if this becomes harder to manage.
 
 //Menu
 
@@ -121,55 +125,61 @@ string getInfoFromUser(const string& prompt) {
     return city;
 }
 
-unordered_set<int> parseNodeIds(const string& input) {
+unordered_set<int> parseNodeIds(const string& input,  vector<string>& errors) {
     unordered_set<int> nodeIds;
     stringstream ss(input);
     string nodeId;
     while (getline(ss, nodeId, ',')) {
         try {
             nodeIds.insert(stoi(nodeId));
-        } catch (const std::invalid_argument& e) {
-            cerr << "ERROR: Invalid node ID '" << nodeId << "' skipped." << endl;
-        } catch (const std::out_of_range& e) {
-            cerr << "ERROR: Node ID out of range '" << nodeId << "' skipped." << endl;
+        } catch (const invalid_argument& e) {
+            errors.emplace_back("Invalid node ID '" + nodeId + "' skipped.");
+        } catch (const out_of_range& e) {
+            errors.emplace_back("Node ID out of range '" + nodeId + "' skipped.");
         }
     }
     return nodeIds;
 }
 
-vector<pair<int, int>> parseSegmentPairs(const string& input) {
-    vector<pair<int, int>> avoidEdges;
-    // Ensure the input is not empty and has the expected format before proceeding
-    if (input.empty()) return avoidEdges;
+vector<pair<int, int>> parseSegmentPairs(const string& input,  vector<string>& errors) {
+    vector<pair<int, int>> segments;
+    //NOTE: strict regex for a pair of ints and R as raw string
+    // \( = ( , (\d+) = number , ',' = comma , (\d+) = number , \) = )
+    regex pattern(R"(\((\d+),(\d+)\))");
 
-    // Prepare the input string by removing the outer parentheses
-    string segmentPairs = input.substr(1, input.length() - 2);
+    //NOTE: regex specific iterator for strings
+    auto begin = sregex_iterator(input.begin(), input.end(), pattern);
+    auto end = sregex_iterator();
 
-    // Use a stream to parse each segment defined by commas
-    istringstream segmentStream(segmentPairs);
-    string segment;
-
-    // Process each segment
-    while (getline(segmentStream, segment, ',')) {
-        // Ensure the segment starts as expected with '(' and remove it
-        if (segment.front() == '(') {
-            segment = segment.substr(1);  // Remove the '('
+    for (auto it = begin; it != end; ++it) {
+        try {
+            int a = stoi((*it)[1]);
+            int b = stoi((*it)[2]);
+            segments.emplace_back(a, b);
+        } catch (...) {
+            errors.emplace_back("Invalid segment pair.");
         }
-
-        int first = stoi(segment);
-
-        // Find the position of the comma separating the two numbers
-        size_t commaPos = segment.find(',');
-
-        getline(segmentStream, segment, ')');
-        int second = stoi(segment);
-
-        avoidEdges.emplace_back(first, second);
-
-        // If the next character in the stream is a comma, move past it
-        if (segmentStream.peek() == ',') segmentStream.get(); // This handles the delimiter after each pair
     }
-    return avoidEdges;
+
+    //Detect Junk
+    string leftovers = input;
+    for (const auto& seg : segments) {
+        string pattern = "(" + to_string(seg.first) + "," + to_string(seg.second) + ")";
+        size_t pos = leftovers.find(pattern);
+        if (pos != string::npos) {
+            leftovers.replace(pos, pattern.length(), "");
+        }
+    }
+    // Remove commas and whitespace to detect leftover junk
+    leftovers.erase(remove_if(leftovers.begin(), leftovers.end(), [](char c) {
+        return c == ',' || isspace(c);
+    }), leftovers.end());
+
+    if (!leftovers.empty()) {
+        errors.emplace_back("Unrecognized or malformed segment(s): '" + leftovers + "'");
+    }
+
+    return segments;
 }
 
 bool isParkingNode(const Graph& graph, int nodeId) {
@@ -182,11 +192,13 @@ bool isParkingNode(const Graph& graph, int nodeId) {
 void Menu::batchProcess() {
     tc_clear_screen();
 
+    vector<string> errors;
+
     ifstream inputFile("../batch/input.txt");
     ofstream outputFile("../batch/output.txt");
 
     if (!inputFile.is_open() || !outputFile.is_open()) {
-        std::cerr << "Error opening file(s)." << std::endl;
+        cerr << TC_RED << "ERROR: Error opening file(s)." << TC_NRM << endl;
         return; // Exit if file cannot be opened
     }
 
@@ -194,43 +206,62 @@ void Menu::batchProcess() {
     int source, destination;
 
     // Read the first line for mode
-    getline(inputFile, line);
-    mode = line.substr(line.find(':') + 1);
+    if (!getline(inputFile, line) || line.find("Mode:")!=0) errors.emplace_back("Missing or malformed Mode line");
+    else mode = line.substr(5);
 
     // Read the second line for source
-    getline(inputFile, line);
-    source = stoi(line.substr(line.find(':') + 1));
+    if (!getline(inputFile, line) || line.find("Source:")!=0) errors.emplace_back("Missing or malformed Source line");
+    else try {source = stoi(line.substr(7));}catch (...) {errors.emplace_back("Invalid Source ID");}
 
     // Read the third line for destination
-    getline(inputFile, line);
-    destination = stoi(line.substr(line.find(':') + 1));
+    if (!getline(inputFile, line) || line.find("Destination:")!=0) errors.emplace_back("Missing or malformed Destination line");
+    else try {destination = stoi(line.substr(12));} catch (...) {errors.emplace_back("Invalid Destination ID");}
 
 
     unordered_set<int> avoidNodes;
-    vector<std::pair<int, int>> avoidEdges;
+    vector<pair<int, int>> avoidEdges;
     int includeNode = -1;
     int maxWalkTime = 0;
 
 
-    // Read optional parameters if present
+    // Read optional parameters
     while (getline(inputFile, line)) {
         if (line.find("AvoidNodes:") != string::npos) {
-            avoidNodes = parseNodeIds(line.substr(line.find(':') + 1));
+            avoidNodes = parseNodeIds(line.substr(11), errors);
         } else if (line.find("AvoidSegments:") != string::npos) {
-            avoidEdges = parseSegmentPairs(line.substr(line.find(':') + 1));
+            avoidEdges = parseSegmentPairs(line.substr(14), errors);
         } else if (line.find("IncludeNode:") != string::npos) {
-            istringstream includeStream(line.substr(line.find(':') + 1));
-            includeStream >> includeNode;
+            string value = line.substr(12);
+            if (!value.empty()) {try {includeNode = stoi(line.substr(12));} catch (...) {errors.emplace_back("Invalid IncludeNode ID");}}
         } else if (line.find("MaxWalkTime:") != string::npos) {
-            istringstream includeStream(line.substr(line.find(':') + 1));
-            includeStream >> maxWalkTime;
+            string value = line.substr(12);
+            if (!value.empty()) {try {maxWalkTime = stoi(line.substr(12));} catch (...) {errors.emplace_back("Invalid MaxWalkTime value");}}
         }
     }
 
     if (includeNode == -1) {includeNode= source;}
+    if (mode != "driving" && mode != "driving-walking") errors.push_back("Unsupported mode: " + mode);
+    if (mode == "driving-walking" && source == destination) errors.emplace_back("In mode driving-walking source can not be the same as destination");
+    if (mode == "driving-walking" && (isParkingNode(graph, source) || isParkingNode(graph, destination))) errors.emplace_back("In mode driving-walking neither source or destination can be parking spots");
 
-    // Now that all data is parsed, perform the appropriate routing function based on the mode
-    std::string routeDetails;
+    if (!graph.findVertex(source)) errors.emplace_back("Source node ID " + to_string(source) + " not found in the graph.");
+    if (!graph.findVertex(destination)) errors.emplace_back("Destination node ID " + to_string(destination) + " not found in the graph.");
+    if (includeNode != source && !graph.findVertex(includeNode)) errors.emplace_back("IncludeNode ID " + to_string(includeNode) + " not found in the graph.");
+    for (int nodeId : avoidNodes) if (!graph.findVertex(nodeId)) errors.emplace_back("AvoidNode ID " + to_string(nodeId) + " not found in the graph.");
+
+    //Display and return if error where found
+    if (!errors.empty()) {
+        cout << TC_RED << "Batch input errors detected:" << TC_NRM << endl;
+        for (const auto& err : errors) cout << TC_RED << err << TC_NRM << endl;
+        cout << "Press enter to return to the menu..." << endl;
+        getchar();
+        displayMenu();
+        return;
+    }
+
+    //Call right algorithm
+
+    string routeDetails;
     if (mode == "driving" && avoidNodes.empty() && avoidEdges.empty()) {
         routeDetails = SimpleDriving(&graph, source, destination);
     } else if (mode == "driving") {
@@ -241,12 +272,14 @@ void Menu::batchProcess() {
 
     // Write the routing details to the output file
     outputFile << routeDetails << endl;
-    /*
+
     //Debug avoidEdges parsing
-    for (const auto& pair : avoidEdges) {
-        outputFile << "(" << pair.first << "," << pair.second << ")" << "\n";
+    bool debug = false;
+    if (debug) {
+        for (const auto& pair : avoidEdges) {
+            outputFile << "(" << pair.first << "," << pair.second << ")" << "\n";
+        }
     }
-    */
 
     inputFile.close();
     outputFile.close();
@@ -256,109 +289,375 @@ void Menu::batchProcess() {
 }
 
 void Menu::askForRouteDetailsDriving() {
-    tc_clear_screen();
-    show_cursor();
-    disable_raw_mode();
+    int source, destination, includeNode;
+    unordered_set<int> avoidNodes;
+    vector<pair<int, int>> avoidEdges;
 
-    try {
+    string answeredSummary;
+
+    // SOURCE
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
+
         string sourceStr = getInfoFromUser("Enter the start city ID:");
-        int source = stoi(sourceStr);
+        try {
+            source = stoi(sourceStr);
+            if (!graph.findVertex(source)) {
+                cout << TC_RED << "ERROR: Source ID not found in graph." << TC_NRM << endl;
+                cout << "\nPress enter to try again..." << endl;
+                getchar();
+                continue;
+            }
+            answeredSummary +=  + "Enter the start city ID:\n" + to_string(source);
+            break;
+        }catch (...) {
+            cout << TC_RED << "ERROR: Invalid source ID. Please enter a valid number." << TC_NRM << endl;
+            cout << "\nPress enter to try again..." << endl;
+            hide_cursor();
+            enable_raw_mode();
+            getchar();
+        }
+    }
 
-        string destinationStr = getInfoFromUser("\nEnter the destination city ID:");
-        int destination = stoi(destinationStr);
+    //DESTINATION
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
 
-        string avoidNodesStr = getInfoFromUser("\nEnter city IDs to avoid (optional, press enter to skip):");
-        unordered_set<int> avoidNodes = parseNodeIds(avoidNodesStr);
+        string destStr = getInfoFromUser("\nEnter the destination city ID:");
+        try {
+            destination = stoi(destStr);
+            if (!graph.findVertex(destination)) {
+                cout << TC_RED << "ERROR: Destination ID not found in graph." << TC_NRM << endl;
+                cout << "\nPress enter to try again..." << endl;
+                getchar();
+                continue;
+            }
+            answeredSummary +=  + "\nEnter the destination city ID:\n" + to_string(destination);
+            break;
+        } catch (...) {
+            cout << TC_RED << "ERROR: Invalid destination ID. Please enter a valid number." << TC_NRM << endl;
+            cout << "\nPress enter to try again..." << endl;
+            hide_cursor();
+            enable_raw_mode();
+            getchar();
+        }
+    }
 
-        string avoidSegmentsStr = getInfoFromUser("\nEnter segments to avoid (optional, format (x,y),(a,b),etc.):");
-        vector<pair<int, int>> avoidEdges = parseSegmentPairs(avoidSegmentsStr);
+    //AVOID NODES OPTIONAL
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
 
-        string includeNodeStr = getInfoFromUser("\nEnter a city ID to route through (optional, press enter to skip):");
-        int includeNode = includeNodeStr.empty() ? source : stoi(includeNodeStr);
+        string avoidStr = getInfoFromUser("\nEnter city IDs to avoid (optional, press enter to skip):");
+        vector<string> errors;
+        avoidNodes = parseNodeIds(avoidStr, errors);
 
-        hide_cursor();
-
-        string routeDetails;
-        if (avoidNodes.empty() && avoidEdges.empty()) {
-            routeDetails = SimpleDriving(&graph, source, destination);
-        } else {
-            routeDetails = RestrictedDriving(&graph, source, destination, avoidNodes, avoidEdges, includeNode);
+        for (int id : avoidNodes) {
+            if (!graph.findVertex(id)) {
+                errors.emplace_back("AvoidNode ID " + to_string(id) + " not found in graph.");
+            }else {
+                if (id == source) errors.emplace_back("AvoidNode ID " + to_string(id) + " is the same as the source node.");
+                if (id == destination) errors.emplace_back("AvoidNode ID " + to_string(id) + " is the same as the destination node.");
+                if (id == includeNode) errors.emplace_back("AvoidNode ID " + to_string(id) + " is the same as the include node.");
+            }
         }
 
-        tc_clear_screen();
-        cout << routeDetails << endl;
+        if (!avoidStr.empty() && errors.empty()) {
+            answeredSummary += "\nEnter city IDs to avoid (optional, press enter to skip):\n" + avoidStr;
+            break;
+        } else if (errors.empty()) {
+            answeredSummary += "\nEnter city IDs to avoid (optional, press enter to skip):\n<none>";
+            break;
+        }
 
-        cout << "Press enter to return to the menu..." <<endl;
-        getchar();
+        for (const auto& err : errors) {
+            cout << TC_RED << "ERROR: " << err << TC_NRM << endl;
+        }
 
-    } catch (const std::invalid_argument& e) {
+        cout << "\nPress enter to continue..." << endl;
         hide_cursor();
-        cout << TC_RED << "Invalid input. Please enter values with correct format." << TC_NRM << endl;
-        getchar();
-    }catch (const std::out_of_range& e) {
-        hide_cursor();
-        cout << TC_RED << "Input out of range. Ensure numbers are within the valid range." << TC_NRM << endl;
+        enable_raw_mode();
         getchar();
     }
 
+    // AVOID SEGMENTS OPTIONAL
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
+
+        string segStr = getInfoFromUser("\nEnter segments to avoid (format: (x,y),(a,b), etc. — optional, press enter to skip):");
+        vector<string> errors;
+        avoidEdges = parseSegmentPairs(segStr, errors);
+
+        for (const auto& [a, b] : avoidEdges) {
+            if (!graph.findVertex(a) || !graph.findVertex(b)) {
+                errors.emplace_back("AvoidSegment (" + to_string(a) + "," + to_string(b) + ") contains a node not found in the graph.");
+            }
+        }
+
+        if (!segStr.empty() && errors.empty()) {
+            answeredSummary += "\nEnter segments to avoid (optional):\n" + segStr;
+            break;
+        } else if (errors.empty()) {
+            answeredSummary += "\nEnter segments to avoid (optional):\n<none>";
+            break;
+        }
+
+        for (const auto& err : errors) {
+            cout << TC_RED << "ERROR: " << err << TC_NRM << endl;
+        }
+
+        cout << "\nPress enter to continue..." << endl;
+        hide_cursor();
+        enable_raw_mode();
+        getchar();
+    }
+
+    //INCLUDE NODE OPTIONAL
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
+
+        string includeStr = getInfoFromUser("\nEnter a city ID to route through (optional, press enter to skip):");
+        if (includeStr.empty()) {
+            includeNode = source;
+            answeredSummary += "\nEnter a city ID to route through (optional, press enter to skip):\n<none>";
+            break;
+        }
+        try {
+            includeNode = stoi(includeStr);
+            if (!graph.findVertex(includeNode)) {
+                cout << TC_RED << "ERROR: Include node not found in graph." << TC_NRM << endl;
+                cout << "\nPress enter to try again..." << endl;
+                getchar();
+                continue;
+            }
+            answeredSummary +=  + "\nEnter a city ID to route through (optional, press enter to skip):\n" + to_string(includeNode);
+            break;
+        } catch (...) {
+            cout << TC_RED << "ERROR: Invalid include node ID." << TC_NRM << endl;
+            cout << "\nPress enter to try again..." << endl;
+            hide_cursor();
+            enable_raw_mode();
+            getchar();
+        }
+    }
+
+    string routeDetails;
+    if (avoidNodes.empty() && avoidEdges.empty()) {
+        routeDetails = SimpleDriving(&graph, source, destination);
+    } else {
+        routeDetails = RestrictedDriving(&graph, source, destination, avoidNodes, avoidEdges, includeNode);
+    }
+
+    hide_cursor();
     enable_raw_mode();
+    tc_clear_screen();
+    cout << routeDetails << endl;
+
+    cout << "Press enter to return to the menu..." <<endl;
+    getchar();
     displayMenu();
 }
 
 void Menu::askForRouteDetailsDW() {
-    tc_clear_screen();
-    show_cursor();
-    disable_raw_mode();
+    int source, destination, maxWalkTime;
+    unordered_set<int> avoidNodes;
+    vector<pair<int, int>> avoidEdges;
 
-    try {
+    string answeredSummary;
+
+    // SOURCE
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
+
         string sourceStr = getInfoFromUser("Enter the start city ID:");
-        int source = stoi(sourceStr);
+        try {
+            source = stoi(sourceStr);
+            if (!graph.findVertex(source)) {
+                cout << TC_RED << "ERROR: Source ID not found in graph." << TC_NRM << endl;
+                cout << "\nPress enter to try again..." << endl;
+                getchar();
+                continue;
+            }
+            if (isParkingNode(graph, source)) {
+                cout << TC_RED << "ERROR: Source node cannot be a parking spot in driving-walking mode." << TC_NRM << endl;
+                cout << "\nPress enter to try again..." << endl;
+                getchar();
+                continue;
+            }
+            answeredSummary +=  + "Enter the start city ID:\n" + to_string(source);
+            break;
+        }catch (...) {
+            cout << TC_RED << "ERROR: Invalid source ID. Please enter a valid number." << TC_NRM << endl;
+            cout << "\nPress enter to try again..." << endl;
+            hide_cursor();
+            enable_raw_mode();
+            getchar();
+        }
+    }
 
-        string destinationStr = getInfoFromUser("\nEnter the destination city ID:");
-        int destination = stoi(destinationStr);
+    //DESTINATION
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
 
-        // Check if source and destination are the same or designated as parking nodes
-        if (source == destination){
-            throw runtime_error("Source and destination cannot be the same.");
-        }else if (isParkingNode(graph, source) || isParkingNode(graph, destination)) {
-            throw runtime_error("Neither the source nor the destination can be parking spots.");
+        string destStr = getInfoFromUser("\nEnter the destination city ID:");
+        try {
+            destination = stoi(destStr);
+            if (!graph.findVertex(destination)) {
+                cout << TC_RED << "ERROR: Destination ID not found in graph." << TC_NRM << endl;
+                cout << "\nPress enter to try again..." << endl;
+                getchar();
+                continue;
+            }
+            if (destination == source) {
+                cout << TC_RED << "ERROR: Destination must be different from source." << TC_NRM << endl;
+                cout << "\nPress enter to try again..." << endl;
+                getchar();
+                continue;
+            }
+            if (isParkingNode(graph, destination)) {
+                cout << TC_RED << "ERROR: Destination node cannot be a parking spot in driving-walking mode." << TC_NRM << endl;
+                cout << "\nPress enter to try again..." << endl;
+                getchar();
+                continue;
+            }
+            answeredSummary +=  + "\nEnter the destination city ID:\n" + to_string(destination);
+            break;
+        } catch (...) {
+            cout << TC_RED << "ERROR: Invalid destination ID. Please enter a valid number." << TC_NRM << endl;
+            cout << "\nPress enter to try again..." << endl;
+            hide_cursor();
+            enable_raw_mode();
+            getchar();
+        }
+    }
+
+    // MAX WALK TIME
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
+
+        string walkTimeStr = getInfoFromUser("\nEnter the Max Walk Time (minutes):");
+        try {
+            maxWalkTime = stoi(walkTimeStr);
+            if (maxWalkTime < 0) {
+                cout << TC_RED << "ERROR: Max walk time must be a positive number." << TC_NRM << endl;
+                getchar(); continue;
+            }
+            answeredSummary += "\nEnter the Max Walk Time (minutes):\n" + to_string(maxWalkTime);
+            break;
+        } catch (...) {
+            cout << TC_RED << "ERROR: Invalid input. Enter a valid number." << TC_NRM << endl;
+            hide_cursor();
+            enable_raw_mode();
+            getchar();
+        }
+    }
+
+    //AVOID NODES OPTIONAL
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
+
+        string avoidStr = getInfoFromUser("\nEnter city IDs to avoid (optional, press enter to skip):");
+        vector<string> errors;
+        avoidNodes = parseNodeIds(avoidStr, errors);
+
+        for (int id : avoidNodes) {
+            if (!graph.findVertex(id)) {
+                errors.emplace_back("AvoidNode ID " + to_string(id) + " not found in graph.");
+            }else {
+                if (id == source) errors.emplace_back("AvoidNode ID " + to_string(id) + " is the same as the source node.");
+                if (id == destination) errors.emplace_back("AvoidNode ID " + to_string(id) + " is the same as the destination node.");
+            }
         }
 
-        string maxWalkTimeStr = getInfoFromUser("\nEnter the Max Walk Time:");
-        int maxWalkTime = stoi(maxWalkTimeStr);
+        if (!avoidStr.empty() && errors.empty()) {
+            answeredSummary += "\nEnter city IDs to avoid (optional, press enter to skip):\n" + avoidStr;
+            break;
+        } else if (errors.empty()) {
+            answeredSummary += "\nEnter city IDs to avoid (optional, press enter to skip):\n<none>";
+            break;
+        }
 
-        string avoidNodesStr = getInfoFromUser("\nEnter city IDs to avoid (optional, press enter to skip):");
-        unordered_set<int> avoidNodes = parseNodeIds(avoidNodesStr);
+        for (const auto& err : errors) {
+            cout << TC_RED << "ERROR: " << err << TC_NRM << endl;
+        }
 
-        string avoidSegmentsStr = getInfoFromUser("\nEnter segments to avoid (optional, format (x,y),(a,b),etc.):");
-        vector<pair<int, int>> avoidEdges = parseSegmentPairs(avoidSegmentsStr);
-
+        cout << "\nPress enter to continue..." << endl;
         hide_cursor();
-
-        string routeDetails = DrivingWalking(&graph, source, destination, maxWalkTime, avoidNodes, avoidEdges);
-        tc_clear_screen();
-        cout << routeDetails << endl;
-
-        cout << "Press enter to return to the menu..." <<endl;
-        getchar();
-
-    } catch (const std::invalid_argument& e) {
-        hide_cursor();
-        cout << TC_RED << "Invalid input. Please enter values with correct format." << TC_NRM << endl;
-        getchar();
-
-    } catch (const std::out_of_range& e) {
-        hide_cursor();
-        cout << TC_RED << "Input out of range. Please enter smaller numbers." << TC_NRM << endl;
-        getchar();
-
-    }catch (const std::runtime_error& e) {
-        hide_cursor();
-        cout << TC_RED << e.what() << TC_NRM << endl;
+        enable_raw_mode();
         getchar();
     }
 
+    // AVOID SEGMENTS OPTIONAL
+    while (true) {
+        tc_clear_screen();
+        disable_raw_mode();
+        show_cursor();
+        cout << answeredSummary;
+
+        string segStr = getInfoFromUser("\nEnter segments to avoid (format: (x,y),(a,b), etc. — optional, press enter to skip):");
+        vector<string> errors;
+        avoidEdges = parseSegmentPairs(segStr, errors);
+
+        for (const auto& [a, b] : avoidEdges) {
+            if (!graph.findVertex(a) || !graph.findVertex(b)) {
+                errors.emplace_back("AvoidSegment (" + to_string(a) + "," + to_string(b) + ") contains a node not found in the graph.");
+            }
+        }
+
+        if (!segStr.empty() && errors.empty()) {
+            answeredSummary += "\nEnter segments to avoid (optional):\n" + segStr;
+            break;
+        } else if (errors.empty()) {
+            answeredSummary += "\nEnter segments to avoid (optional):\n<none>";
+            break;
+        }
+
+        for (const auto& err : errors) {
+            cout << TC_RED << "ERROR: " << err << TC_NRM << endl;
+        }
+
+        cout << "\nPress enter to continue..." << endl;
+        hide_cursor();
+        enable_raw_mode();
+        getchar();
+    }
+
+    // Execute route algorithm
+    string routeDetails = DrivingWalking(&graph, source, destination, maxWalkTime, avoidNodes, avoidEdges);
+
+    hide_cursor();
     enable_raw_mode();
+    tc_clear_screen();
+    cout << routeDetails << endl;
+
+    cout << "Press enter to return to the menu..." << endl;
+    getchar();
     displayMenu();
 }
 
@@ -561,10 +860,10 @@ void Menu::displayHelp() const {
    Description: Calculates the fastest driving route between two cities.
    Required: Start City ID, Destination City ID
    Optional:
+     - IncludeNode: City ID that must be passed through
      - AvoidNodes: Comma-separated list of City IDs to avoid
      - AvoidSegments: List of edges in format (x,y),(a,b), etc.
-           Example: AvoidSegments: (2,3),(4,5)
-     - IncludeNode: City ID that must be passed through)",
+   Example: AvoidSegments: (2,3),(4,5))",
 
         // Page 2: Plan Green Route
         R"(================================ Help Menu ================================
@@ -583,10 +882,10 @@ void Menu::displayHelp() const {
      Mode:driving OR Mode:driving-walking
      Source:<ID>
      Destination:<ID>
-     MaxWalkTime:<minutes> (only for driving-walking)
      AvoidNodes:1,3,7
      AvoidSegments:(2,3),(4,5)
      IncludeNode:<ID>
+     MaxWalkTime:<minutes> (only for driving-walking)
    Output is written to: output.txt)",
 
         // Page 4: Options, Exit, Tips

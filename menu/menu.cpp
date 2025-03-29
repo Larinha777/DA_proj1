@@ -684,10 +684,18 @@ void Menu::optionsMenu() {
                 cout << optionsItems[i] << endl;
         }
 
-        switch (getchar()) {
+        char input = getchar();
+        switch (input) {
             case '0':
                 optionsRunning = false;
                 break;
+            case '1':
+            case '2':
+            case '3':
+                // Set the index based on the numeric key pressed and execute the selection immediately.
+                optionsIndex = input - '1';
+                handleOptionsSelection(optionsIndex);
+            break;
             case '\033': // Handle arrow keys
                 processArrowKeyInput(optionsIndex, optionsItems.size());
                 break;
@@ -728,7 +736,7 @@ void Menu::changeTextColor() {
         for (int i = 0; i < colorOptions.size(); ++i) {
             if (i == colorChoice){
                 cout << "> " << colorOptions[i] << "\n";
-            }else{
+            } else {
                 cout << "  " << colorOptions[i] << "\n";
             }
         }

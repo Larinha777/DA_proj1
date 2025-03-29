@@ -1,8 +1,4 @@
-//
-// Created by Vasco Lemos on 06/03/2025.
-//
-
-#include "graph.h"
+#include "Graph.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -48,7 +44,7 @@ void Vertex::removeOutgoingEdges() {
 }
 
 bool Vertex::operator<(const Vertex &vertex) const {
-    return this->dist < vertex.dist;
+    return this->getDist() < vertex.getDist();
 }
 
 std::string Vertex::getName() const {
@@ -67,73 +63,79 @@ bool Vertex::isPark() const {
     return this->park;
 }
 
-int Vertex::getLow() const {
-    return this->low;
-}
-
-void Vertex::setLow(int value) {
-    this->low = value;
-}
-
-int Vertex::getNum() const {
-    return this->num;
-}
-
-void Vertex::setNum(int value) {
-    this->num = value;
-}
 
 std::vector<Edge*> Vertex::getAdj() const {
     return this->adj;
 }
-
 bool Vertex::isVisited() const {
     return this->visited;
 }
 
-bool Vertex::isProcessing() const {
-    return this->processing;
+double Vertex::getDist(const int mode) const {
+    switch (mode) {
+        case -1:
+            return this->dist;
+        case 0:
+            return this->driveDist;
+        case 1:
+            return this->walkDist;
+        default:
+            return INF;
+    }
 }
 
-unsigned int Vertex::getIndegree() const {
-    return this->indegree;
-}
-
-double Vertex::getDist() const {
-    return this->dist;
-}
-
-Edge *Vertex::getPath() const {
-    return this->path;
+Edge *Vertex::getPath(int mode) const {
+    switch (mode) {
+        case 0:
+            return this->drivePath;
+        case 1:
+            return this->walkPath;
+        default:
+            return nullptr;
+    }
 }
 
 std::vector<Edge *> Vertex::getIncoming() const {
     return this->incoming;
 }
 
+bool Vertex::isAvoiding() const{
+    return this->avoid;
+}
+
 void Vertex::setName(const std::string& newName) {this->name = newName;}
 void Vertex::setId(const int& newId) {this->id = newId;}
 void Vertex::setCode(const std::string& newCode) {this->code = newCode;}
 void Vertex::setPark(const bool newPark) {this->park = newPark;}
-
 void Vertex::setVisited(bool visited) {
     this->visited = visited;
 }
 
-void Vertex::setProcessing(bool processing) {
-    this->processing = processing;
+void Vertex::setAvoiding(bool avoid) {
+    this->avoid = avoid;
 }
 
-void Vertex::setIndegree(unsigned int indegree) {
-    this->indegree = indegree;
-}
-
-void Vertex::setDist(double dist) {
+void Vertex::setDist(const double dist, const int mode) {
+    switch (mode) {
+        case 0:
+            this->driveDist = dist;
+            break;
+        case 1:
+            this->walkDist = dist;
+            break;
+    }
     this->dist = dist;
 }
 
-void Vertex::setPath(Edge *path) {
-    this->path = path;
+void Vertex::setPath(Edge *path, int mode) {
+    switch (mode) {
+        case 0:
+            this->drivePath = path;
+        break;
+        case 1:
+            this->walkPath = path;
+        break;
+    }
 }
 
 void Vertex::deleteEdge(const Edge *edge) const {
@@ -151,6 +153,7 @@ void Vertex::deleteEdge(const Edge *edge) const {
     delete edge;
 }
 
+
 /********************** Edge  ****************************/
 
 Edge::Edge(Vertex *orig, Vertex *dest, double w, double drive)
@@ -163,28 +166,52 @@ Vertex *Edge::getDest() const {
 Vertex *Edge::getOrig() const {
     return this->orig;
 }
-
 Edge *Edge::getReverse() const {
     return this->reverse;
-}
-
-bool Edge::isSelected() const {
-    return this->selected;
-}
-
-void Edge::setSelected(bool selected) {
-    this->selected = selected;
 }
 
 void Edge::setReverse(Edge *reverse) {
     this->reverse = reverse;
 }
+bool Edge::isAvoiding() const {
+    return this->avoid;
+}
+
+void Edge::setAvoiding(bool avoid) {
+    this->avoid = avoid;
+}
+
 
 void Edge::setWalk(const double walk) { this->walk = walk; }
 double Edge::getWalk() const { return this->walk; }
 void Edge::setDrive(const double drive) { this->drive = drive; }
 double Edge::getDrive() const { return drive; }
 
+void Edge::setTime(const double time, const int mode) {
+    switch (mode) {
+        case 0:
+            this->drive = time;
+            break;
+        case 1:
+            this->walk = time;
+                break;
+        default:
+            std::cout<<"Mode not found"<<std::endl;
+    }
+}
+double Edge::getTime(const int mode) const {
+    switch (mode) {
+        case 0:
+            return this->drive;
+        break;
+        case 1:
+            return this->walk;
+        break;
+        default:
+            std::cout<<"Mode not found"<<std::endl;
+        return -1;
+    }
+}
 
 /********************** Graph  ****************************/
 
@@ -200,6 +227,14 @@ std::vector<Vertex *> Graph::getVertexSet() const {
 Vertex *Graph::findVertex(const std::string &code) const {
     for (auto v : vertexSet)
         if (v->getCode() == code)
+            return v;
+    return nullptr;
+}
+
+// Finds a vertex by its id.
+Vertex *Graph::findVertex(const int &id) const {
+    for (auto v : vertexSet)
+        if (v->getId() == id)
             return v;
     return nullptr;
 }
@@ -298,10 +333,18 @@ Graph initialize(const std::string &locs, const std::string &dists) {
     std::string line;
 
     std::ifstream locFile(locs);
-    if (!locFile.is_open()) {
-        std::cout << "Error opening locations file: " << locs << std::endl;
-        return g;
+    std::ifstream distFile(dists);
+
+    if (!locFile.is_open() && !distFile.is_open()) {
+        throw std::runtime_error("Could not open files: " + locs + " and " + dists);
     }
+    if (!locFile.is_open()) {
+        throw std::runtime_error("Failed to open locations file: " + locs);
+    }
+    if (!distFile.is_open()) {
+        throw std::runtime_error("Failed to open distances file: " + dists);
+    }
+
     std::getline(locFile, line); // Skip header line
     while (std::getline(locFile, line)) {
         if (line.empty())
@@ -312,16 +355,13 @@ Graph initialize(const std::string &locs, const std::string &dists) {
             std::getline(ss, codeStr, ',') && std::getline(ss, parkStr, ',')) {
             int id = std::stoi(idStr);
             bool park = (std::stoi(parkStr) != 0);
-            g.addVertex(nameStr, id, codeStr, park);
+            if (g.addVertex(nameStr, id, codeStr, park) == false) {
+                std::cout<<"Problem adding vertex "<<nameStr<<std::endl;
             }
+        }
     }
     locFile.close();
 
-    std::ifstream distFile(dists);
-    if (!distFile.is_open()) {
-        std::cout << "Error opening distances file: " << dists << std::endl;
-        return g;
-    }
     std::getline(distFile, line); // Skip header line
     while (std::getline(distFile, line)) {
         if (line.empty())
@@ -334,35 +374,16 @@ Graph initialize(const std::string &locs, const std::string &dists) {
             std::getline(ss, walkStr, ',')) {
             double drive = (driveStr == "X") ? -1 : std::stod(driveStr); //driving might not be available ("X")
             double walk = std::stod(walkStr);
-            g.addEdge(loc1Str, loc2Str, walk, drive);
-            g.addEdge(loc2Str, loc1Str, walk, drive);
+
+            if (g.addEdge(loc1Str, loc2Str, walk, drive) == 0) {
+                std::cout<<"Problem adding Edge"<<std::endl;
             }
+            if (g.addEdge(loc2Str, loc1Str, walk, drive) == 0) {
+                std::cout<<"Problem adding Edge"<<std::endl;
+            }
+        }
     }
     distFile.close();
 
     return g;
-}
-
-int main() {
-    Graph g = initialize("myLocations.csv", "myDistances.csv");
-
-    std::cout << "Vertices in the graph:\n";
-    for (Vertex* v : g.getVertexSet()) {
-        std::cout << "Name: " << v->getName()
-                  << ", ID: " << v->getId()
-                  << ", Code: " << v->getCode()
-                  << ", Parking: " << (v->isPark() ? "Yes" : "No") << '\n';
-    }
-
-    std::cout << "\nEdges in the graph:\n";
-    for (Vertex* v : g.getVertexSet()) {
-        for (Edge* e : v->getAdj()) {
-            std::cout << "From " << e->getOrig()->getName()
-                      << " to " << e->getDest()->getName()
-                      << " | Walk: " << e->getWalk()
-                      << " | Drive: " << e->getDrive() << '\n';
-        }
-    }
-
-    return 0;
 }

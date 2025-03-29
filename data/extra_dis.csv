@@ -1,0 +1,9 @@
+Location1,Location2,Driving,Walking
+S0,A1,40,5000
+S0,A2,45,5000
+S0,A3,50,5000
+S0,A4,20,5000
+A1,D0,X,10
+A2,D0,X,5
+A3,D0,X,5
+A4,D0,X,15

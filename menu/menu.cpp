@@ -17,7 +17,7 @@ using namespace std;
 //Menu
 
 Menu::Menu() : selectedItemIndex(0), currentColor(TC_MAG),
-    graph(initialize("data/loc.csv", "data/dist.csv")),
+    graph(initialize("../data/loc.csv", "../data/dist.csv")),
     items({
         "1. Plan Route",
         "2. Plan Green Route",
